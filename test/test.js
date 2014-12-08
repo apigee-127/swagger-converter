@@ -1,15 +1,14 @@
 var fs = require('fs');
 var convert = require('..');
 var expect = require('chai').expect;
-var walk = require('walkdir');
 
+require('mocha-jshint')();
 
 describe('Converting', function(){
   [
     'minimal'
   ].forEach(testInput);
 });
-
 
 function testInput(fileName) {
   describe(fileName, function () {
