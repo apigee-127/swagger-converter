@@ -4,7 +4,7 @@
   "description": "Swagger Converter",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/mocha/bin/mocha"
   },
   "repository": {
     "type": "git",
@@ -19,5 +19,9 @@
   "bugs": {
     "url": "https://github.com/apigee-127/swagger-converter/issues"
   },
-  "homepage": "https://github.com/apigee-127/swagger-converter"
+  "homepage": "https://github.com/apigee-127/swagger-converter",
+  "devDependencies": {
+    "chai": "^1.10.0",
+    "mocha": "^2.0.1"
+  }
 }
