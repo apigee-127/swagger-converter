@@ -82,6 +82,15 @@
   "disallowSpacesInAnonymousFunctionExpression": {
     "beforeOpeningRoundBrace": true
   },
+  "disallowSpacesInFunctionDeclaration": {
+    "beforeOpeningRoundBrace": true
+  },
+  "disallowSpacesInFunctionExpression": {
+    "beforeOpeningRoundBrace": true
+  },
+  "disallowSpacesInNamedFunctionExpression": {
+    "beforeOpeningRoundBrace": true
+  },
   "disallowSpacesInsideObjectBrackets": "all",
   "disallowSpacesInsideArrayBrackets": "all",
   "disallowSpacesInsideParentheses": true,
