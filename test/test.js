@@ -3,15 +3,16 @@ var convert = require('..');
 var expect = require('chai').expect;
 
 require('mocha-jshint')();
+require('mocha-jscs')();
 
-describe('Converting', function(){
+describe('Converting', function() {
   [
     'minimal'
   ].forEach(testInput);
 });
 
 function testInput(fileName) {
-  describe(fileName, function () {
+  describe(fileName, function() {
     var input = './test/input/' + fileName + '/index.json';
     var outputFile = fs.readFileSync('./test/output/' + fileName + '.json');
     var outputObject = JSON.parse(outputFile.toString());

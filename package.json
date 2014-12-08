@@ -22,7 +22,9 @@
   "homepage": "https://github.com/apigee-127/swagger-converter",
   "devDependencies": {
     "chai": "^1.10.0",
+    "jscs": "^1.8.1",
     "mocha": "^2.0.1",
+    "mocha-jscs": "^1.0.2",
     "mocha-jshint": "0.0.9"
   }
 }
