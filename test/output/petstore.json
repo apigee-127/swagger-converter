@@ -1,26 +1,52 @@
 {
     "swagger": "2.0",
     "info": {
-        "title": "Swagger Sample App",
         "version": "1.0.0",
+        "title": "Swagger Sample App",
         "description": "This is a sample server Petstore server.  You can find out more about Swagger \n    at <a href=\"http://swagger.wordnik.com\">http://swagger.wordnik.com</a> or on irc.freenode.net, #swagger.  For this sample,\n    you can use the api key \"special-key\" to test the authorization filters",
-        "termsOfService": "http://helloreverb.com/terms/",
         "contact": {
             "email": "apiteam@wordnik.com"
         },
         "license": {
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        }
+        },
+        "termsOfService": "http://helloreverb.com/terms/"
     },
     "paths": {
         "/pet": {
-            "get": {
+            "put": {
+                "produces": [
+                    "application/json",
+                    "application/xml",
+                    "text/plain",
+                    "text/html"
+                ],
+                "summary": "Update an existing pet",
+                "description": "",
+                "operationId": "updatePet",
                 "responses": {
-                    "200": {
-                        "description": "Return all pets"
+                    "400": {
+                        "description": "Invalid ID supplied"
+                    },
+                    "404": {
+                        "description": "Pet not found"
+                    },
+                    "405": {
+                        "description": "Validation exception"
                     }
-                }
+                },
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "description": "Pet object that needs to be updated in the store",
+                        "schema": {
+                            "$ref": "#/definitions/Pet"
+                        },
+                        "required": true
+                    }
+                ]
             }
         }
     }

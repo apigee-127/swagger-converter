@@ -44,41 +44,6 @@
               "message": "Validation exception"
             }
           ]
-        },
-        {
-          "method": "POST",
-          "summary": "Add a new pet to the store",
-          "notes": "",
-          "type": "void",
-          "nickname": "addPet",
-          "consumes": [
-            "application/json",
-            "application/xml"
-          ],
-          "authorizations": {
-            "oauth2": [
-              {
-                "scope": "write:pets",
-                "description": "modify pets in your account"
-              }
-            ]
-          },
-          "parameters": [
-            {
-              "name": "body",
-              "description": "Pet object that needs to be added to the store",
-              "required": true,
-              "type": "Pet",
-              "paramType": "body",
-              "allowMultiple": false
-            }
-          ],
-          "responseMessages": [
-            {
-              "code": 405,
-              "message": "Invalid input"
-            }
-          ]
         }
       ]
     },

@@ -39,6 +39,8 @@ function buildInfo(source) {
 
     if (source.info.title) {
       info.title = source.info.title;
+    } else {
+      info.title = '';
     }
 
     if (source.info.description) {
@@ -126,7 +128,8 @@ function buildPath(oldPath) {
 
   oldPath.apis.forEach(function(pathApi) {
     pathApi.operations.forEach(function(oldOperation) {
-      path[oldOperation.method.toLowerCase()] = buildOperation(oldOperation);
+      var method = oldOperation.method.toLowerCase();
+      path[method] = buildOperation(oldOperation, oldPath);
     });
   });
 
@@ -136,10 +139,30 @@ function buildPath(oldPath) {
 /*
  * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
  * @param oldOperation {object} - Swagger 1.2 operation object
+ * @param oldPath {object} - Swagger 1.2 path object that contains the operation
  * @returns {object} - Swagger 2.0 operation object
 */
-function buildOperation(oldOperation) {
-  var operation = {responses: {}};
+function buildOperation(oldOperation, oldPath) {
+  var operation = {
+    responses: {},
+    description: oldOperation.description || ''
+  };
+
+  if (oldOperation.summary) {
+    operation.summary = oldOperation.summary;
+  }
+
+  if (oldOperation.nickname) {
+    operation.operationId = oldOperation.nickname;
+  }
+
+  if (oldPath && oldPath.produces) {
+    operation.produces = oldPath.produces;
+  }
+
+  if (Array.isArray(oldOperation.parameters)) {
+    operation.parameters = oldOperation.parameters.map(buildParameter);
+  }
 
   if (Array.isArray(oldOperation.responseMessages)) {
     oldOperation.responseMessages.forEach(function(oldResponse) {
@@ -162,4 +185,26 @@ function responseMessages(oldResponse) {
   response.description = oldResponse.message;
 
   return response;
+}
+
+/*
+ * Converts Swagger 1.2 parameter object to Swagger 2.0 parameter object
+ * @param oldParameter {object} - Swagger 1.2 parameter object
+ * @returns {object} - Swagger 2.0 parameter object
+*/
+function buildParameter(oldParameter) {
+  var parameter = {
+    in: oldParameter.paramType,
+    description: oldParameter.description,
+    name: oldParameter.name,
+    required: !!oldParameter.required
+  };
+  var literalTypes = ['string', 'integer', 'boolean'];
+  if (literalTypes.indexOf(oldParameter.type) === -1) {
+    parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
+  } else {
+    parameter.type = oldParameter.type;
+  }
+
+  return parameter;
 }
