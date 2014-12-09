@@ -36,8 +36,14 @@ function buildInfo(source) {
   };
 
   if (typeof source.info === 'object') {
-    info.title = source.info.title;
-    info.description = source.info.description;
+
+    if (source.info.title) {
+      info.title = source.info.title;
+    }
+
+    if (source.info.description) {
+      info.description = source.info.description;
+    }
 
     if (source.info.contact) {
       info.contact = {
@@ -96,7 +102,7 @@ function buildPaths(source, basePath, callback) {
   function makePath() {
     var api = source.apis[index];
     var pathName = api.path.substr(1);
-    getFile(path.join(basePath, pathName + '.json'), function(err, oldPath) {
+    getFile(path.join(basePath, pathName), function(err, oldPath) {
       if (err) { return callback(err); }
       paths[api.path] = buildPath(oldPath);
 
