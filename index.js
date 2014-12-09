@@ -5,18 +5,24 @@ var path = require('path');
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
  * @param sourceUri {string} - entry point to Swagger 1.2 specs file. This can
  *  be an HTTP URL or a local file path
- * @returns {object} - Swagger 2.0 document JSON object
+ * @param callback {function} - A function that will be called with an error and
+ *   Swagger 2.0 document JSON object as arguments
 */
-module.exports = function convert(sourceUri) {
-  var basePath = path.dirname(sourceUri);
-  var source = getFile(sourceUri);
-  var dest = {
-    swagger: '2.0',
-    info: buildInfo(source),
-    paths: buildPaths(source, basePath)
-  };
+module.exports = function convert(sourceUri, callback) {
+  getFile(sourceUri, function(error, source) {
+    var basePath = path.dirname(sourceUri);
+    var result = {
+      swagger: '2.0',
+      info: buildInfo(source),
+    };
 
-  return dest;
+    if (error) { return callback(error); }
+
+    buildPaths(source, basePath, function(error, paths) {
+      result.paths = paths;
+      callback(error, result);
+    });
+  });
 };
 
 /*
@@ -36,19 +42,29 @@ function buildInfo(source) {
  * Builds "paths" section of Swagger 2.0 document
  * @param source {object} - Swagger 1.2 document object
  * @param basePath {string} - base path for getting path objects
- * @returns {object} - "paths" section of Swagger 2.0 document
+ * @param callback {function} - A function that will be called with an error and
+ *  "paths" section of Swagger 2.0 document as arguments
 */
-function buildPaths(source, basePath) {
+function buildPaths(source, basePath, callback) {
   var paths = {};
+  var index = 0; // Index of last path resolved
+  makePath();
 
-  source.apis.forEach(function(api) {
+  function makePath() {
+    var api = source.apis[index];
     var pathName = api.path.substr(1);
-    var oldPath = getFile(path.join(basePath, pathName + '.json'));
+    getFile(path.join(basePath, pathName + '.json'), function(err, oldPath) {
+      if (err) { return callback(err); }
+      paths[api.path] = buildPath(oldPath);
 
-    paths[api.path] = buildPath(oldPath);
-  });
-
-  return paths;
+      if (index === (source.apis.length - 1)) {
+        callback(null, paths);
+      } else {
+        index++;
+        makePath();
+      }
+    });
+  }
 }
 
 /*
