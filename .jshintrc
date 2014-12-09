@@ -15,6 +15,7 @@
     "es5" : false,
     "browser" : true,
 
+    "expr": true,
     "boss" : false,
     "curly": false,
     "debug": false,

@@ -6,23 +6,20 @@ var expect = require('chai').expect;
 require('mocha-jshint')();
 require('mocha-jscs')();
 
-describe('Converting', function() {
-  [
-    'minimal'
-  ].forEach(testInput);
-});
+['minimal'].forEach(testInput);
 
 function testInput(fileName) {
-  describe(fileName, function() {
-    var input = path.join('./test/input/', fileName, '/index.json');
-    var outputPath = path.join('./test/output/', fileName + '.json');
-    var outputFile = fs.readFileSync(outputPath);
-    var outputObject = JSON.parse(outputFile.toString());
+  var input = path.join('./test/input/', fileName, '/index.json');
+  var outputPath = path.join('./test/output/', fileName + '.json');
+  var outputFile = fs.readFileSync(outputPath);
+  var outputObject = JSON.parse(outputFile.toString());
 
-    convert(input, function(error, converted) {
+  convert(input, function(error, converted) {
+
+    describe('converting file: ' + fileName, function() {
 
       it('should have no errors', function() {
-        expect(error).to.be.falsy();
+        expect(error).to.be.falsy;
       });
 
       describe('output', function() {
