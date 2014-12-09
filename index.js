@@ -31,9 +31,31 @@ module.exports = function convert(sourceUri, callback) {
  * @returns {object} - "info" section of Swagger 2.0 document
 */
 function buildInfo(source) {
-  var info = source.info;
+  var info = {
+    version: source.apiVersion
+  };
 
-  info.version = source.apiVersion;
+  if (typeof source.info === 'object') {
+    info.title = source.info.title;
+    info.description = source.info.description;
+
+    if (source.info.contact) {
+      info.contact = {
+        email: source.info.contact
+      };
+    }
+
+    if (source.info.license) {
+      info.license = {
+        name: source.info.license,
+        url: source.info.licenseUrl
+      };
+    }
+
+    if (source.info.termsOfServiceUrl) {
+      info.termsOfService = source.info.termsOfServiceUrl;
+    }
+  }
 
   return info;
 }
@@ -113,9 +135,11 @@ function buildPath(oldPath) {
 function buildOperation(oldOperation) {
   var operation = {responses: {}};
 
-  oldOperation.responseMessages.forEach(function(oldResponse) {
-    operation.responses[oldResponse.code] = responseMessages(oldResponse);
-  });
+  if (Array.isArray(oldOperation.responseMessages)) {
+    oldOperation.responseMessages.forEach(function(oldResponse) {
+      operation.responses[oldResponse.code] = responseMessages(oldResponse);
+    });
+  }
 
   return operation;
 }
