@@ -19,7 +19,7 @@ function testInput(fileName) {
     describe('converting file: ' + fileName, function() {
 
       it('should have no errors', function() {
-        expect(error).to.be.falsy;
+        expect(!!error).to.be.false;
       });
 
       describe('output', function() {
