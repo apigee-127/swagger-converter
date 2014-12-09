@@ -6,7 +6,7 @@ var expect = require('chai').expect;
 require('mocha-jshint')();
 require('mocha-jscs')();
 
-['minimal', 'embedded'].forEach(testInput);
+['minimal', 'embedded', 'petstore'].forEach(testInput);
 
 function testInput(fileName) {
   var input = path.join('./test/input/', fileName, '/index.json');
