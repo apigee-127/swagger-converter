@@ -47,9 +47,30 @@ function buildInfo(source) {
 */
 function buildPaths(source, basePath, callback) {
   var paths = {};
+
+  // In case "operations" exists (embedded Swagger) use "operations" and don't
+  // look for files that include the operation information
+  // Note: A document can not have non-emebedded and embedded paths at the same
+  // time. If first path has key "operations" as an object, we assume all paths
+  // will have "operations"
+  if (typeof source.apis[0].operations === 'object') {
+    source.apis.forEach(function(api) {
+      paths[api.path] = {};
+      api.operations.forEach(function(operation) {
+        paths[api.path][operation.method.toLowerCase()] =
+          buildOperation(operation);
+      });
+    });
+    return callback(null, paths);
+  }
+
   var index = 0; // Index of last path resolved
   makePath();
 
+  /*
+   * Asyncronisly makes a path for each `api` and increment `index` until it
+   * reaches to end of the `source.api` array
+  */
   function makePath() {
     var api = source.apis[index];
     var pathName = api.path.substr(1);
