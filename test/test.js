@@ -28,7 +28,7 @@ function testInput(fileName) {
       expect(converted.info).to.have.property('title').that.is.a('string');
     });
     it('output should have paths property that is an object', function() {
-      expect(converted).to.have.property('paths').tha.is.a('object');
+      expect(converted).to.have.property('paths').that.is.a('object');
     });
 
     it('should produce the same output as output file', function() {
