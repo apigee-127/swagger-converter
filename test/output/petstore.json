@@ -2,8 +2,9 @@
     "swagger": "2.0",
     "info": {
         "title": "Swagger Sample App",
+        "version": "1.0.0",
         "description": "This is a sample server Petstore server.  You can find out more about Swagger \n    at <a href=\"http://swagger.wordnik.com\">http://swagger.wordnik.com</a> or on irc.freenode.net, #swagger.  For this sample,\n    you can use the api key \"special-key\" to test the authorization filters",
-        "termsOfServiceUrl": "http://helloreverb.com/terms/",
+        "termsOfService": "http://helloreverb.com/terms/",
         "contact": {
             "email": "apiteam@wordnik.com"
         },
@@ -13,7 +14,7 @@
         }
     },
     "paths": {
-        "/pets": {
+        "/pet": {
             "get": {
                 "responses": {
                     "200": {
