@@ -29,7 +29,7 @@ module.exports = function convert(sourceUri, callback) {
       result.paths = paths;
       extend(models, pathsModels);
       if (Object.keys(models).length) {
-        result.definitions = models;
+        result.definitions = transformAllModels(models);
       }
       callback(error, result);
     });
@@ -243,6 +243,47 @@ function buildParameter(oldParameter) {
   }
 
   return parameter;
+}
+
+/*
+ * Transforms a Swagger 1.2 model object to a Swagger 2.0 model object
+ * @param model {object} - (mutable) Swagger 1.2 model object
+*/
+function transformModel(model) {
+  if (typeof model.properties === 'object') {
+    Object.keys(model.properties).forEach(function(propertieName) {
+      var property = model.properties[propertieName];
+
+      if (property.type === 'integer') {
+        if (property.minimum) {
+          property.minimum = parseInt(property.minimum);
+        }
+        if (property.maximum) {
+          property.maximum = parseInt(property.maximum);
+        }
+      }
+
+      model.properties[propertieName] = property;
+    });
+  }
+}
+
+/*
+ * Transfers the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
+ * object
+ * @param models {object} - (mutable) an object containing Swagger 1.2 objects
+ * @returns {object} - transformed modles object
+*/
+function transformAllModels(models) {
+  if (typeof models !== 'object') {
+    throw new Error('models must be object');
+  }
+
+  Object.keys(models).forEach(function(modleName) {
+    transformModel(models[modleName]);
+  });
+
+  return models;
 }
 
 /*

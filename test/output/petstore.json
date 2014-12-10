@@ -367,8 +367,8 @@
                     "type": "integer",
                     "format": "int64",
                     "description": "unique identifier for the pet",
-                    "minimum": "0.0",
-                    "maximum": "100.0"
+                    "minimum": 0,
+                    "maximum": 100.0
                 },
                 "category": {
                     "$ref": "Category"
