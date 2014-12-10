@@ -61,4 +61,4 @@ converter.convert(pathToIndexJson, function(error, swagger2Document) {
 Install dependencies with `npm install` command and use `npm test` to run the test. Tests will fail if you break coding style.
 
 ### License
-MIT
+MIT. See [LICENSE](./LICENSE)
