@@ -11,6 +11,7 @@ var path = require('path');
 module.exports = function convert(sourceUri, callback) {
   getFile(sourceUri, function(error, source) {
     var basePath = path.dirname(sourceUri);
+    var models = {};
     var result = {
       swagger: '2.0',
       info: buildInfo(source)
@@ -20,10 +21,16 @@ module.exports = function convert(sourceUri, callback) {
       result.basePath = source.basePath;
     }
 
+    extend(models, source.models);
+
     if (error) { return callback(error); }
 
-    buildPaths(source, basePath, function(error, paths) {
+    buildPathsAndModels(source, basePath, function(error, paths, pathsModels) {
       result.paths = paths;
+      extend(models, pathsModels);
+      if (Object.keys(models).length) {
+        result.definitions = models;
+      }
       callback(error, result);
     });
   });
@@ -73,14 +80,15 @@ function buildInfo(source) {
 }
 
 /*
- * Builds "paths" section of Swagger 2.0 document
+ * Builds "paths" and "models" sections of Swagger 2.0 document
  * @param source {object} - Swagger 1.2 document object
  * @param basePath {string} - base path for getting path objects
- * @param callback {function} - A function that will be called with an error and
- *  "paths" section of Swagger 2.0 document as arguments
+ * @param callback {function} - A function that will be called with an error,
+ *  "paths" and "models" section of Swagger 2.0 document as arguments
 */
-function buildPaths(source, basePath, callback) {
+function buildPathsAndModels(source, basePath, callback) {
   var paths = {};
+  var models = {};
 
   // In case "operations" exists (embedded Swagger) use "operations" and don't
   // look for files that include the operation information
@@ -94,8 +102,11 @@ function buildPaths(source, basePath, callback) {
         paths[api.path][operation.method.toLowerCase()] =
           buildOperation(operation);
       });
+
+      // Extend models with models in this path
+      extend(models, api.models);
     });
-    return callback(null, paths);
+    return callback(null, paths, models);
   }
 
   var index = 0; // Index of last path resolved
@@ -112,8 +123,11 @@ function buildPaths(source, basePath, callback) {
       if (err) { return callback(err); }
       paths[api.path] = buildPath(oldPath);
 
+      // Extend models with models in this path
+      extend(models, oldPath.models);
+
       if (index === (source.apis.length - 1)) {
-        callback(null, paths);
+        callback(null, paths, models);
       } else {
         index++;
         makePath();
@@ -214,4 +228,21 @@ function buildParameter(oldParameter) {
   }
 
   return parameter;
+}
+
+/*
+ * Extends an object with another
+ * @param source {object} - object that will get extended
+ * @parma distention {object} - object the will used to extend source
+*/
+function extend(source, distention) {
+  if (typeof source !== 'object') {
+    throw new Error('source must be objects');
+  }
+
+  if (typeof distention === 'object') {
+    Object.keys(distention).forEach(function(key) {
+      source[key] = distention[key];
+    });
+  }
 }
