@@ -223,6 +223,7 @@ function buildResponse(oldResponse) {
  * @returns {object} - Swagger 2.0 parameter object
 */
 function buildParameter(oldParameter) {
+  var typeLowerCase = oldParameter.type.toLowerCase();
   var parameter = {
     in: oldParameter.paramType,
     description: oldParameter.description,
@@ -230,10 +231,15 @@ function buildParameter(oldParameter) {
     required: !!oldParameter.required
   };
   var literalTypes = ['string', 'integer', 'boolean', 'file'];
-  if (literalTypes.indexOf(oldParameter.type.toLowerCase()) === -1) {
+  if (literalTypes.indexOf(typeLowerCase) === -1) {
     parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
   } else {
-    parameter.type = oldParameter.type;
+    parameter.type = typeLowerCase;
+  }
+
+  // form was changed to formData in Swagger 2.0
+  if (parameter.in === 'form') {
+    parameter.in = 'formData';
   }
 
   return parameter;

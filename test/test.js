@@ -17,8 +17,8 @@ function testInput(fileName) {
 
   convert(input, function(error, converted) {
 
-    fs.writeFileSync(fileName + '-converted',
-    JSON.stringify(converted, null, 4));
+    // fs.writeFileSync(fileName + '-converted',
+    //   JSON.stringify(converted, null, 4));
 
     describe('converting file: ' + fileName, function() {
 

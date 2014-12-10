@@ -77,7 +77,11 @@
                 ]
             },
             "post": {
-                "responses": {},
+                "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    }
+                },
                 "description": "",
                 "summary": "uploads an image",
                 "operationId": "uploadFile",
@@ -89,18 +93,18 @@
                 ],
                 "parameters": [
                     {
-                        "in": "form",
+                        "in": "formData",
                         "description": "Additional data to pass to server",
                         "name": "additionalMetadata",
                         "required": false,
                         "type": "string"
                     },
                     {
-                        "in": "form",
+                        "in": "formData",
                         "description": "file to upload",
                         "name": "file",
                         "required": false,
-                        "type": "File"
+                        "type": "file"
                     }
                 ]
             },
@@ -166,7 +170,11 @@
         },
         "/user": {
             "post": {
-                "responses": {},
+                "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    }
+                },
                 "description": "",
                 "summary": "Create user",
                 "operationId": "createUser",
@@ -245,7 +253,11 @@
                 ]
             },
             "get": {
-                "responses": {},
+                "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    }
+                },
                 "description": "",
                 "summary": "Logs out current logged in user session",
                 "operationId": "logoutUser",
