@@ -6,6 +6,7 @@ var expect = require('chai').expect;
 require('mocha-jshint')();
 require('mocha-jscs')();
 
+// TODO: petstore example output is not perfect output. Update the output file
 ['minimal', 'embedded', 'petstore'].forEach(testInput);
 
 function testInput(fileName) {
@@ -15,6 +16,9 @@ function testInput(fileName) {
   var outputObject = JSON.parse(outputFile.toString());
 
   convert(input, function(error, converted) {
+
+    // fs.writeFileSync(fileName + '-converted',
+    // JSON.stringify(converted, null, 4));
 
     describe('converting file: ' + fileName, function() {
 

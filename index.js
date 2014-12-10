@@ -13,8 +13,12 @@ module.exports = function convert(sourceUri, callback) {
     var basePath = path.dirname(sourceUri);
     var result = {
       swagger: '2.0',
-      info: buildInfo(source),
+      info: buildInfo(source)
     };
+
+    if (source.basePath) {
+      result.basePath = source.basePath;
+    }
 
     if (error) { return callback(error); }
 
@@ -158,6 +162,9 @@ function buildOperation(oldOperation, oldPath) {
 
   if (oldPath && oldPath.produces) {
     operation.produces = oldPath.produces;
+  }
+  if (oldPath && oldPath.consumes) {
+    operation.consumes = oldPath.consumes;
   }
 
   if (Array.isArray(oldOperation.parameters)) {
