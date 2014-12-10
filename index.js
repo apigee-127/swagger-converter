@@ -188,8 +188,16 @@ function buildOperation(oldOperation, oldPath) {
 
   if (Array.isArray(oldOperation.responseMessages)) {
     oldOperation.responseMessages.forEach(function(oldResponse) {
-      operation.responses[oldResponse.code] = responseMessages(oldResponse);
+      operation.responses[oldResponse.code] = buildResponse(oldResponse);
     });
+  }
+
+  if (!Object.keys(operation.responses).length) {
+    operation.responses = {
+      '200': {
+        description: 'No response was specified'
+      }
+    };
   }
 
   return operation;
@@ -200,7 +208,7 @@ function buildOperation(oldOperation, oldPath) {
  * @param oldResponse {object} - Swagger 1.2 response object
  * @returns {object} - Swagger 2.0 response object
 */
-function responseMessages(oldResponse) {
+function buildResponse(oldResponse) {
   var response = {};
 
   // TODO: Confirm this is correct
