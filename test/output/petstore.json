@@ -100,9 +100,7 @@
                         "description": "file to upload",
                         "name": "file",
                         "required": false,
-                        "schema": {
-                            "$ref": "#/definitions/File"
-                        }
+                        "type": "File"
                     }
                 ]
             },

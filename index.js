@@ -221,8 +221,8 @@ function buildParameter(oldParameter) {
     name: oldParameter.name,
     required: !!oldParameter.required
   };
-  var literalTypes = ['string', 'integer', 'boolean'];
-  if (literalTypes.indexOf(oldParameter.type) === -1) {
+  var literalTypes = ['string', 'integer', 'boolean', 'file'];
+  if (literalTypes.indexOf(oldParameter.type.toLowerCase()) === -1) {
     parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
   } else {
     parameter.type = oldParameter.type;
