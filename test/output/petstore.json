@@ -253,8 +253,7 @@
                 "operationId": "logoutUser",
                 "produces": [
                     "application/json"
-                ],
-                "parameters": []
+                ]
             }
         },
         "/store": {

@@ -181,7 +181,8 @@ function buildOperation(oldOperation, oldPath) {
     operation.consumes = oldPath.consumes;
   }
 
-  if (Array.isArray(oldOperation.parameters)) {
+  if (Array.isArray(oldOperation.parameters) &&
+      oldOperation.parameters.length) {
     operation.parameters = oldOperation.parameters.map(buildParameter);
   }
 
