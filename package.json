@@ -4,7 +4,8 @@
   "description": "Swagger Converter",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha"
+    "test": "./node_modules/mocha/bin/mocha",
+    "build": "./node_modules/browserify/bin/cmd.js ./index.js > ./browser.js"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
   },
   "homepage": "https://github.com/apigee-127/swagger-converter",
   "devDependencies": {
+    "browserify": "^7.0.0",
     "chai": "^1.10.0",
     "jscs": "^1.8.1",
     "mocha": "^2.0.1",
