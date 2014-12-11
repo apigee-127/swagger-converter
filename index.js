@@ -82,7 +82,7 @@ function buildInfo(source) {
     if (source.info.title) {
       info.title = source.info.title;
     } else {
-      info.title = '';
+      info.title = 'Title was not specified';
     }
 
     if (source.info.description) {
