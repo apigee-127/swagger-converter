@@ -12,48 +12,25 @@ npm install swagger-converter --save
 ```
 
 ### Usage
-Swagger Converter expects your Swagger 1.2 documents to follow Swagger 1.2 routing semantics. For example, if your root Swagger file like following code, you will need to have files that are located relatively to your root Swagger document.
+Swagger Converter expects two arguments.
 
-**index.json**
-```json
-{
-  "apiVersion": "1.0.0",
-  "swaggerVersion": "1.2",
-  "apis": [
-    {
-      "path": "/pet",
-      "description": "Operations about pets"
-    },
-    {
-      "path": "/user",
-      "description": "Operations about user"
-    },
-    {
-      "path": "/store",
-      "description": "Operations about store"
-    }
-  ]
-}
-```
-For Swagger Converter to work with this document, it needs to find `pet`, `user` and `store` files in the same location of `index.json`. It basically uses `path` values as a relative path in file system to find those files. So for this example, your file structure should look like this:
-
-```
-petstore/
-├── index.json
-├── pet
-├── store
-└── user
-```
-
-Now to convert this Swagger 1.2 document we can start from `index.json` as entry point:
+* `resourceListing` is Swagger 1.2 entry point file.
+* `apiDeclarations` is an array of objects that are listed in `resourceListing`
 
 ```javascript
 var convert = require('swagger-converter');
-var pathToIndexJson = '/path/to/petstore/index.json';
+var fs = require('fs');
+var resourceListing = JSON.parse(fs.readFileSync('/path/to/petstore/index.json').toString());
+var apiDeclarations = [
+  JSON.parse(fs.readFileSync('/path/to/petstore/pet.json').toString()),
+  JSON.parse(fs.readFileSync('/path/to/petstore/user.json').toString()),
+  JSON.parse(fs.readFileSync('/path/to/petstore/store.json').toString())
+];
 
-convert(pathToIndexJson, function(error, swagger2Document) {
-  console.log(JSON.stringify(swagger2Document, null, 2));
-});
+var swagger2Document = convert(resourceListing, apiDeclarations);
+
+console.log(JSON.stringify(swagger2Document, null, 2));
+
 ```
 
 ### Development
