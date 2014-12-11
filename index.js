@@ -283,7 +283,8 @@ function buildParameter(oldParameter) {
     name: oldParameter.name,
     required: !!oldParameter.required
   };
-  var literalTypes = ['string', 'number', 'boolean', 'integer', 'array', 'void', 'File'];
+  var literalTypes = ['string', 'number', 'boolean', 'integer', 'array', 'void',
+    'File'];
   if (literalTypes.indexOf(oldParameter.type) === -1) {
     parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
   } else {

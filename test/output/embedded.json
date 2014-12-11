@@ -7,7 +7,7 @@
     "basePath": "/petstore-api",
     "host": "petstore.example.com",
     "schemes": [
-        "https:"
+        "https"
     ],
     "paths": {
         "/pets": {
