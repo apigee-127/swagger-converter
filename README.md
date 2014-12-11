@@ -48,11 +48,11 @@ petstore/
 Now to convert this Swagger 1.2 document we can start from `index.json` as entry point:
 
 ```javascript
-var converter = require('swagger-converter');
+var convert = require('swagger-converter');
 var pathToIndexJson = '/path/to/petstore/index.json';
 
-converter.convert(pathToIndexJson, function(error, swagger2Document) {
-  console.log(JSON.stringify(swagger2Document, null, 2);
+convert(pathToIndexJson, function(error, swagger2Document) {
+  console.log(JSON.stringify(swagger2Document, null, 2));
 });
 ```
 
