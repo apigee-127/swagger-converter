@@ -587,7 +587,7 @@
     "host": "petstore.swagger.wordnik.com",
     "basePath": "/api",
     "schemes": [
-        "http:"
+        "http"
     ],
     "definitions": {
         "Tag": {
@@ -618,7 +618,7 @@
                     "default": -1
                 },
                 "category": {
-                    "$ref": "#/definitions/#/definitions/Category"
+                    "$ref": "#/definitions/Category"
                 },
                 "name": {
                     "type": "string"
@@ -632,7 +632,7 @@
                 "tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/#/definitions/Tag"
+                        "$ref": "#/definitions/Tag"
                     }
                 },
                 "status": {
