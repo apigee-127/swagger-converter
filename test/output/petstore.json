@@ -47,6 +47,101 @@
                         }
                     }
                 ]
+            }
+        },
+        "/pet/findByStatus": {
+            "get": {
+                "responses": {
+                    "400": {
+                        "description": "Invalid status value"
+                    }
+                },
+                "description": "",
+                "summary": "Finds Pets by status",
+                "operationId": "findPetsByStatus",
+                "produces": [
+                    "application/json",
+                    "application/xml",
+                    "text/plain",
+                    "text/html"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "description": "Status values that need to be considered for filter",
+                        "name": "status",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/pet/findByTags": {
+            "get": {
+                "responses": {
+                    "400": {
+                        "description": "Invalid tag value"
+                    }
+                },
+                "description": "",
+                "summary": "Finds Pets by tags",
+                "operationId": "findPetsByTags",
+                "produces": [
+                    "application/json",
+                    "application/xml",
+                    "text/plain",
+                    "text/html"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "description": "Tags to filter by",
+                        "name": "tags",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/pet/{petId}": {
+            "post": {
+                "responses": {
+                    "405": {
+                        "description": "Invalid input"
+                    }
+                },
+                "description": "",
+                "summary": "Updates a pet in the store with form data",
+                "operationId": "updatePetWithForm",
+                "produces": [
+                    "application/json",
+                    "application/xml",
+                    "text/plain",
+                    "text/html"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "ID of pet that needs to be updated",
+                        "name": "petId",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "formData",
+                        "description": "Updated name of the pet",
+                        "name": "name",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "formData",
+                        "description": "Updated status of the pet",
+                        "name": "status",
+                        "required": false,
+                        "type": "string"
+                    }
+                ]
             },
             "get": {
                 "responses": {
@@ -73,41 +168,9 @@
                         "name": "petId",
                         "required": true,
                         "type": "integer",
+                        "default": -1,
                         "maximum": 100000,
-                        "minimum": 1,
-                        "default": -1
-                    }
-                ]
-            },
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "No response was specified"
-                    }
-                },
-                "description": "",
-                "summary": "uploads an image",
-                "operationId": "uploadFile",
-                "produces": [
-                    "application/json",
-                    "application/xml",
-                    "text/plain",
-                    "text/html"
-                ],
-                "parameters": [
-                    {
-                        "in": "formData",
-                        "description": "Additional data to pass to server",
-                        "name": "additionalMetadata",
-                        "required": false,
-                        "type": "string"
-                    },
-                    {
-                        "in": "formData",
-                        "description": "file to upload",
-                        "name": "file",
-                        "required": false,
-                        "type": "file"
+                        "minimum": 1
                     }
                 ]
             },
@@ -171,7 +234,7 @@
                 ]
             }
         },
-        "/user": {
+        "/pet/uploadImage": {
             "post": {
                 "responses": {
                     "200": {
@@ -179,23 +242,91 @@
                     }
                 },
                 "description": "",
-                "summary": "Create user",
-                "operationId": "createUser",
+                "summary": "uploads an image",
+                "operationId": "uploadFile",
+                "produces": [
+                    "application/json",
+                    "application/xml",
+                    "text/plain",
+                    "text/html"
+                ],
+                "parameters": [
+                    {
+                        "in": "formData",
+                        "description": "Additional data to pass to server",
+                        "name": "additionalMetadata",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "formData",
+                        "description": "file to upload",
+                        "name": "file",
+                        "required": false,
+                        "type": "file"
+                    }
+                ]
+            }
+        },
+        "/user/createWithArray": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    }
+                },
+                "description": "",
+                "summary": "Creates list of users with given input array",
+                "operationId": "createUsersWithArrayInput",
                 "produces": [
                     "application/json"
                 ],
                 "parameters": [
                     {
                         "in": "body",
-                        "description": "Created user object",
+                        "description": "List of user object",
                         "name": "body",
                         "required": true,
                         "schema": {
+                            "$ref": "#/definitions/array"
+                        },
+                        "items": {
                             "$ref": "#/definitions/User"
                         }
                     }
                 ]
-            },
+            }
+        },
+        "/user/createWithList": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    }
+                },
+                "description": "",
+                "summary": "Creates list of users with given list input",
+                "operationId": "createUsersWithListInput",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "description": "List of user object",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/array"
+                        },
+                        "items": {
+                            "$ref": "#/definitions/User"
+                        }
+                    }
+                ]
+            }
+        },
+        "/user/{username}": {
             "put": {
                 "responses": {
                     "400": {
@@ -257,6 +388,64 @@
             },
             "get": {
                 "responses": {
+                    "400": {
+                        "description": "Invalid username supplied"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    }
+                },
+                "description": "",
+                "summary": "Get user by user name",
+                "operationId": "getUserByName",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "The name that needs to be fetched. Use user1 for testing.",
+                        "name": "username",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/user/login": {
+            "get": {
+                "responses": {
+                    "400": {
+                        "description": "Invalid username and password combination"
+                    }
+                },
+                "description": "",
+                "summary": "Logs user into the system",
+                "operationId": "loginUser",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "description": "The user name for login",
+                        "name": "username",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "The password for login in clear text",
+                        "name": "password",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/user/logout": {
+            "get": {
+                "responses": {
                     "200": {
                         "description": "No response was specified"
                     }
@@ -269,7 +458,33 @@
                 ]
             }
         },
-        "/store": {
+        "/user": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    }
+                },
+                "description": "",
+                "summary": "Create user",
+                "operationId": "createUser",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "description": "Created user object",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    }
+                ]
+            }
+        },
+        "/store/order": {
             "post": {
                 "responses": {
                     "400": {
@@ -293,7 +508,9 @@
                         }
                     }
                 ]
-            },
+            }
+        },
+        "/store/order/{orderId}": {
             "delete": {
                 "responses": {
                     "400": {
@@ -346,6 +563,32 @@
             }
         }
     },
+    "securityDefinitions": {
+        "oauth2_implicit": {
+            "type": "oauth2",
+            "flow": "implicit",
+            "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/dialog",
+            "scopes": {
+                "write:pets": "Undescribed write:pets",
+                "read:pets": "Undescribed read:pets"
+            }
+        },
+        "oauth2_authorization_code": {
+            "type": "oauth2",
+            "flow": "accessCode",
+            "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/requestToken",
+            "tokenUrl": "http://petstore.swagger.wordnik.com/api/oauth/token",
+            "scopes": {
+                "write:pets": "Undescribed write:pets",
+                "read:pets": "Undescribed read:pets"
+            }
+        }
+    },
+    "host": "petstore.swagger.wordnik.com",
+    "basePath": "/api",
+    "schemes": [
+        "http:"
+    ],
     "definitions": {
         "Tag": {
             "id": "Tag",
@@ -375,7 +618,7 @@
                     "default": -1
                 },
                 "category": {
-                    "$ref": "#/definitions/Category"
+                    "$ref": "#/definitions/#/definitions/Category"
                 },
                 "name": {
                     "type": "string"
@@ -389,7 +632,7 @@
                 "tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Tag"
+                        "$ref": "#/definitions/#/definitions/Tag"
                     }
                 },
                 "status": {
@@ -414,6 +657,38 @@
                     "type": "string"
                 }
             }
+        },
+        "Animal": {
+            "id": "Animal",
+            "required": [
+                "id",
+                "type"
+            ],
+            "properties": {
+                "id": {
+                    "type": "long"
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "discriminator": "type"
+        },
+        "Cat": {
+            "id": "Cat",
+            "required": [
+                "likesMilk"
+            ],
+            "properties": {
+                "likesMilk": {
+                    "type": "boolean"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Animal"
+                }
+            ]
         },
         "User": {
             "id": "User",
@@ -481,59 +756,6 @@
                     "format": "date-time"
                 }
             }
-        },
-        "Animal": {
-            "id": "Animal",
-            "required": [
-                "id",
-                "type"
-            ],
-            "properties": {
-              "id": {
-                  "type": "long"
-              },
-              "type": {
-                  "type": "string"
-              }
-            },
-            "discriminator": "type"
-          },
-        "Cat": {
-            "id": "Cat",
-            "allOf": [
-                {
-                    "$ref": "#/definitions/Animal"
-                }
-            ],
-            "required": [
-                "likesMilk"
-            ],
-            "properties": {
-                "likesMilk": {
-                    "type": "boolean"
-                }
-            }
-        }
-    },
-    "securityDefinitions": {
-        "oauth2_implicit": {
-          "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/dialog",
-          "flow": "implicit",
-          "scopes": {
-              "read:pets": "Undescribed read:pets",
-              "write:pets": "Undescribed write:pets"
-          },
-          "type": "oauth2"
-        },
-        "oauth2_authorization_code": {
-            "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/requestToken",
-            "flow": "accessCode",
-            "scopes": {
-                "read:pets": "Undescribed read:pets",
-                "write:pets": "Undescribed write:pets"
-            },
-            "tokenUrl": "http://petstore.swagger.wordnik.com/api/oauth/token",
-            "type": "oauth2"
         }
     }
 }
