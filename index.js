@@ -35,11 +35,16 @@ var path = require('path');
 module.exports = function convert(sourceUri, callback) {
   getFile(sourceUri, function(error, source) {
     var basePath = path.dirname(sourceUri);
+    var convertedSecurityNames = {};
     var models = {};
     var result = {
       swagger: '2.0',
       info: buildInfo(source)
     };
+
+    if (source.authorizations) {
+      result.securityDefinitions = buildSecurityDefinitions(source, convertedSecurityNames);
+    }
 
     if (source.basePath) {
       result.basePath = source.basePath;
@@ -267,6 +272,82 @@ function buildParameter(oldParameter) {
   }
 
   return parameter;
+}
+
+/*
+ * Convertes Swagger 1.2 authorization definitions to Swagger 2.0 security definitions
+ *
+ * @param resourceListing {object} - The Swagger 1.2 Resource Listing document
+ * @param convertedSecurityNames {object} - A list of original Swagger 1.2 authorization names and the new Swagger 2.0
+ *                                          security names associated with it (This is required because Swagger 2.0 only
+ *                                          supports one oauth2 flow per security definition but in Swagger 1.2 you
+ *                                          could describe two (implicit and authorization_code).  To support this, we
+ *                                          will create a per-flow version of each oauth2 definition, where necessary,
+ *                                          and keep track of the new names so that when we handle security references
+ *                                          we reference things properly.)
+ *
+ * @returns {object} - Swagger 2.0 security definitions
+ */
+function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
+  var securityDefinitions = {};
+
+  Object.keys(resourceListing.authorizations).forEach(function (name) {
+    var authorization = resourceListing.authorizations[name];
+    var createDefinition = function createDefinition (oName) {
+      var securityDefinition = securityDefinitions[oName || name] = {
+        type: authorization.type
+      };
+
+      if (authorization.passAs) {
+        securityDefinition.in = authorization.passAs;
+      }
+
+      if (authorization.keyname) {
+        securityDefinition.name = authorization.keyname;
+      }
+
+      return securityDefinition;
+    };
+
+    // For oauth2 types, 1.2 describes multiple "flows" in one auth and for 2.0, that is not an option so we need to
+    // create one security definition per flow and keep track of this mapping.
+    if (authorization.grantTypes) {
+      convertedSecurityNames[name] = [];
+
+      Object.keys(authorization.grantTypes).forEach(function (gtName) {
+        var grantType = authorization.grantTypes[gtName];
+        var oName = name + '_' + gtName;
+        var securityDefinition = createDefinition(oName);
+
+        convertedSecurityNames[name].push(oName);
+
+        securityDefinition.flow = gtName === 'implicit' ? 'implicit' : 'accessCode';
+
+        switch (gtName) {
+        case 'implicit':
+          securityDefinition.authorizationUrl = grantType.loginEndpoint.url;
+          break;
+
+        case 'authorization_code':
+          securityDefinition.authorizationUrl = grantType.tokenRequestEndpoint.url;
+          securityDefinition.tokenUrl = grantType.tokenEndpoint.url;
+          break;
+        }
+
+        if (authorization.scopes) {
+          securityDefinition.scopes = {};
+
+          authorization.scopes.forEach(function (scope) {
+            securityDefinition.scopes[scope.scope] = scope.definition || ('Undescribed ' + scope.scope);
+          });
+        }
+      });
+    } else {
+      createDefinition();
+    }
+  });
+
+  return securityDefinitions;
 }
 
 /*

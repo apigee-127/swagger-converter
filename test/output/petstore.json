@@ -478,5 +478,26 @@
                 }
             }
         }
+    },
+    "securityDefinitions": {
+        "oauth2_implicit": {
+          "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/dialog",
+          "flow": "implicit",
+          "scopes": {
+              "read:pets": "Undescribed read:pets",
+              "write:pets": "Undescribed write:pets"
+          },
+          "type": "oauth2"
+        },
+        "oauth2_authorization_code": {
+            "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/requestToken",
+            "flow": "accessCode",
+            "scopes": {
+                "read:pets": "Undescribed read:pets",
+                "write:pets": "Undescribed write:pets"
+            },
+            "tokenUrl": "http://petstore.swagger.wordnik.com/api/oauth/token",
+            "type": "oauth2"
+        }
     }
 }
