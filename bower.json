@@ -1,7 +1,7 @@
 {
   "name": "swagger-converter",
   "main": "index.js",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "homepage": "https://github.com/apigee-127/swagger-converter",
   "authors": [
     "Mohsen Azimi <msn.azi@gmail.com>"
