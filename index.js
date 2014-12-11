@@ -24,6 +24,7 @@
 
 var getFile = require('./get-file');
 var path = require('path');
+var urlParse = require('url').parse;
 
 /*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
@@ -48,7 +49,7 @@ module.exports = function convert(sourceUri, callback) {
     }
 
     if (source.basePath) {
-      result.basePath = source.basePath;
+      assignPathComponents(source.basePath, result);
     }
 
     extend(models, source.models);
@@ -107,6 +108,19 @@ function buildInfo(source) {
   }
 
   return info;
+}
+
+/*
+ * Assigns host, basePath and schemes for Swagger 2.0 result document from
+ * Swagger 1.2 basePath.
+ * @param basePath {string} - the base path from Swagger 1.2
+ * @param result {object} - Swagger 2.0 document
+*/
+function assignPathComponents(basePath, result) {
+  var url = urlParse(basePath);
+  result.host = url.host;
+  result.basePath = url.path;
+  result.schemes = [url.protocol];
 }
 
 /*

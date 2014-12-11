@@ -4,6 +4,11 @@
         "version": "1.0.0",
         "title": "Embedded"
     },
+    "basePath": "/petstore-api",
+    "host": "petstore.example.com",
+    "schemes": [
+        "https:"
+    ],
     "paths": {
         "/pets": {
             "get": {
