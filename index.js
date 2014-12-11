@@ -359,6 +359,12 @@ function transformModel(model) {
     Object.keys(model.properties).forEach(function(propertieName) {
       var property = model.properties[propertieName];
 
+      if (property.$ref) {
+        property.$ref = '#/definitions/' + property.$ref;
+      } else if (property.items && property.items.$ref) {
+        property.items.$ref = '#/definitions/' + property.items.$ref;
+      }
+
       if (property.type === 'integer') {
         if (property.minimum) {
           property.minimum = parseInt(property.minimum);
