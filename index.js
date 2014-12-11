@@ -100,15 +100,14 @@ module.exports = function convert(resourceListing, apiDeclarations) {
 */
 function buildInfo(source) {
   var info = {
-    version: source.apiVersion
+    version: source.apiVersion,
+    title: 'Title was not specified'
   };
 
   if (typeof source.info === 'object') {
 
     if (source.info.title) {
       info.title = source.info.title;
-    } else {
-      info.title = 'Title was not specified';
     }
 
     if (source.info.description) {
@@ -146,7 +145,7 @@ function assignPathComponents(basePath, result) {
   var url = urlParse(basePath);
   result.host = url.host;
   result.basePath = url.path;
-  result.schemes = [url.protocol];
+  result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
 }
 
 /*
