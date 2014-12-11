@@ -33,10 +33,15 @@ console.log(JSON.stringify(swagger2Document, null, 2));
 ```
 
 ##### In browser
-Install it via bower via `bower install --save swagger-converter` or download and include the script manually
-```html
-  <script src="/path/to/swagger-converter/index.js"></script>
+Install via Bower
 ```
+bower install --save swagger-converter
+```
+Include the `browser.js` script in your HTML
+```html
+  <script src="/path/to/swagger-converter/browser.js"></script>
+```
+Use the script
 ```javascript
 var convert = SwaggerConverter.convert;
 ```
@@ -45,5 +50,11 @@ var convert = SwaggerConverter.convert;
 
 Install dependencies with `npm install` command and use `npm test` to run the test. Tests will fail if you break coding style.
 
+##### Building for browser
+Just run this command to make a new `browser.js`
+
+```
+npm run build
+```
 ### License
 MIT. See [LICENSE](./LICENSE)
