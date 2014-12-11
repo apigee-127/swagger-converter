@@ -399,6 +399,34 @@
           "type": "string"
         }
       }
+    },
+    "Animal": {
+      "id": "Animal",
+      "required": [
+        "id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "long"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "discriminator": "type",
+      "subTypes": ["Cat"]
+    },
+    "Cat": {
+      "id": "Cat",
+        "required": [
+          "likesMilk"
+        ],
+        "properties": {
+          "likesMilk": {
+            "type": "boolean"
+          }
+      }
     }
   }
 }

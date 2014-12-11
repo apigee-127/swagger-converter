@@ -420,8 +420,30 @@ function transformAllModels(models) {
     throw new Error('models must be object');
   }
 
-  Object.keys(models).forEach(function(modleName) {
-    transformModel(models[modleName]);
+  var hierarchy = {};
+
+  Object.keys(models).forEach(function(modelId) {
+    var model = models[modelId];
+
+    transformModel(model);
+
+    if (model.subTypes) {
+      hierarchy[modelId] = model.subTypes;
+
+      delete model.subTypes;
+    }
+  });
+
+  Object.keys(hierarchy).forEach(function (parent) {
+    hierarchy[parent].forEach(function (childId) {
+      var childModel = models[childId];
+
+      if (childModel) {
+        childModel.allOf = (childModel.allOf || []).concat({
+          $ref: '#/definitions/' + parent
+        });
+      }
+    });
   });
 
   return models;
