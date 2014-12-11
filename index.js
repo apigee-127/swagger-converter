@@ -375,7 +375,7 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
           securityDefinition.scopes = {};
 
           authorization.scopes.forEach(function(scope) {
-            securityDefinition.scopes[scope.scope] = scope.definition ||
+            securityDefinition.scopes[scope.scope] = scope.description ||
               ('Undescribed ' + scope.scope);
           });
         }

@@ -569,8 +569,8 @@
             "flow": "implicit",
             "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/dialog",
             "scopes": {
-                "write:pets": "Undescribed write:pets",
-                "read:pets": "Undescribed read:pets"
+                "write:pets": "Modify pets in your account",
+                "read:pets": "Read your pets"
             }
         },
         "oauth2_authorization_code": {
@@ -579,8 +579,8 @@
             "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/requestToken",
             "tokenUrl": "http://petstore.swagger.wordnik.com/api/oauth/token",
             "scopes": {
-                "write:pets": "Undescribed write:pets",
-                "read:pets": "Undescribed read:pets"
+                "write:pets": "Modify pets in your account",
+                "read:pets": "Read your pets"
             }
         }
     },
