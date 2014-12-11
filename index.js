@@ -22,49 +22,75 @@
  * THE SOFTWARE.
  */
 
-var getFile = require('./get-file');
-var path = require('path');
 var urlParse = require('url').parse;
 
 /*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
- * @param sourceUri {string} - entry point to Swagger 1.2 specs file. This can
- *  be an HTTP URL or a local file path
- * @param callback {function} - A function that will be called with an error and
- *   Swagger 2.0 document JSON object as arguments
+ * @param resourceListing {object} - root Swagger 1.2 document where it has a
+ *  list of all paths
+ * @param apiDeclarations {array} - a list of all resources listed in
+ * resourceListing. Array of objects
+ * @returns {object} - Fully converted Swagger 2.0 document
 */
-module.exports = function convert(sourceUri, callback) {
-  getFile(sourceUri, function(error, source) {
-    var basePath = path.dirname(sourceUri);
-    var convertedSecurityNames = {};
-    var models = {};
-    var result = {
-      swagger: '2.0',
-      info: buildInfo(source)
-    };
+module.exports = function convert(resourceListing, apiDeclarations) {
+  if (typeof resourceListing !== 'object') {
+    throw new Error('resourceListing must be an object');
+  }
+  if (!Array.isArray(apiDeclarations)) {
+    throw new Error('apiDeclarations mus be an array');
+  }
 
-    if (source.authorizations) {
-      result.securityDefinitions = buildSecurityDefinitions(source,
-        convertedSecurityNames);
-    }
+  var convertedSecurityNames = {};
+  var models = {};
+  var result = {
+    swagger: '2.0',
+    info: buildInfo(resourceListing),
+    paths: {}
+  };
 
-    if (source.basePath) {
-      assignPathComponents(source.basePath, result);
-    }
+  if (resourceListing.authorizations) {
+    result.securityDefinitions = buildSecurityDefinitions(resourceListing,
+      convertedSecurityNames);
+  }
 
-    extend(models, source.models);
+  if (resourceListing.basePath) {
+    assignPathComponents(resourceListing.basePath, result);
+  }
 
-    if (error) { return callback(error); }
+  extend(models, resourceListing.models);
 
-    buildPathsAndModels(source, basePath, function(error, paths, pathsModels) {
-      result.paths = paths;
-      extend(models, pathsModels);
-      if (Object.keys(models).length) {
-        result.definitions = transformAllModels(models);
+  // Handle embedded documents
+  if (Array.isArray(resourceListing.apis)) {
+    resourceListing.apis.forEach(function(api) {
+      if (Array.isArray(api.operations)) {
+        result.paths[api.path] = buildPath(api, resourceListing);
       }
-      callback(error, result);
     });
+  }
+
+  apiDeclarations.forEach(function(apiDeclaration) {
+
+    // For each apiDeclaration if there is a basePath, assign path components
+    // This might override previous assignments
+    if (apiDeclaration.basePath) {
+      assignPathComponents(apiDeclaration.basePath, result);
+    }
+
+    if (!Array.isArray(apiDeclaration.apis)) { return; }
+    apiDeclaration.apis.forEach(function(api) {
+      result.paths[api.path] = buildPath(api, apiDeclaration);
+
+    });
+    if (Object.keys(apiDeclaration.models).length) {
+      extend(models, transformAllModels(apiDeclaration.models));
+    }
   });
+
+  if (Object.keys(models).length) {
+    result.definitions = transformAllModels(models);
+  }
+
+  return result;
 };
 
 /*
@@ -124,63 +150,6 @@ function assignPathComponents(basePath, result) {
 }
 
 /*
- * Builds "paths" and "models" sections of Swagger 2.0 document
- * @param source {object} - Swagger 1.2 document object
- * @param basePath {string} - base path for getting path objects
- * @param callback {function} - A function that will be called with an error,
- *  "paths" and "models" section of Swagger 2.0 document as arguments
-*/
-function buildPathsAndModels(source, basePath, callback) {
-  var paths = {};
-  var models = {};
-
-  // In case "operations" exists (embedded Swagger) use "operations" and don't
-  // look for files that include the operation information
-  // Note: A document can not have non-emebedded and embedded paths at the same
-  // time. If first path has key "operations" as an object, we assume all paths
-  // will have "operations"
-  if (typeof source.apis[0].operations === 'object') {
-    source.apis.forEach(function(api) {
-      paths[api.path] = {};
-      api.operations.forEach(function(operation) {
-        paths[api.path][operation.method.toLowerCase()] =
-          buildOperation(processDataType(operation));
-      });
-
-      // Extend models with models in this path
-      extend(models, api.models);
-    });
-    return callback(null, paths, models);
-  }
-
-  var index = 0; // Index of last path resolved
-  makePath();
-
-  /*
-   * Asyncronisly makes a path for each `api` and increment `index` until it
-   * reaches to end of the `source.api` array
-  */
-  function makePath() {
-    var api = source.apis[index];
-    var pathName = api.path.substr(1);
-    getFile(path.join(basePath, pathName), function(err, oldPath) {
-      if (err) { return callback(err); }
-      paths[api.path] = buildPath(oldPath);
-
-      // Extend models with models in this path
-      extend(models, oldPath.models);
-
-      if (index === (source.apis.length - 1)) {
-        callback(null, paths, models);
-      } else {
-        index++;
-        makePath();
-      }
-    });
-  }
-}
-
-/*
  * Process a data type object.
  *
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
@@ -222,17 +191,17 @@ function processDataType(field) {
 
 /*
  * Builds a Swagger 2.0 path object form a Swagger 1.2 path object
- * @param oldPath {object} - Swagger 1.2 path object
+ * @param api {object} - Swagger 1.2 path object
+ * @param apiDeclaration {object} - parent apiDeclaration
  * @returns {object} - Swagger 2.0 path object
 */
-function buildPath(oldPath) {
+function buildPath(api, apiDeclaration) {
   var path = {};
 
-  oldPath.apis.forEach(function(pathApi) {
-    pathApi.operations.forEach(function(oldOperation) {
-      var method = oldOperation.method.toLowerCase();
-      path[method] = buildOperation(oldOperation, oldPath);
-    });
+  api.operations.forEach(function(oldOperation) {
+    var method = oldOperation.method.toLowerCase();
+    path[method] = buildOperation(oldOperation, apiDeclaration.produces,
+      apiDeclaration.consumes);
   });
 
   return path;
@@ -241,10 +210,11 @@ function buildPath(oldPath) {
 /*
  * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
  * @param oldOperation {object} - Swagger 1.2 operation object
- * @param oldPath {object} - Swagger 1.2 path object that contains the operation
+ * @param produces {array} - from containing apiDeclaration
+ * @param consumes {array} - from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
-function buildOperation(oldOperation, oldPath) {
+function buildOperation(oldOperation, produces, consumes) {
   var operation = {
     responses: {},
     description: oldOperation.description || ''
@@ -258,12 +228,8 @@ function buildOperation(oldOperation, oldPath) {
     operation.operationId = oldOperation.nickname;
   }
 
-  if (oldPath && oldPath.produces) {
-    operation.produces = oldPath.produces;
-  }
-  if (oldPath && oldPath.consumes) {
-    operation.consumes = oldPath.consumes;
-  }
+  if (produces) { operation.produces = produces; }
+  if (consumes) { operation.consumes = consumes; }
 
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {

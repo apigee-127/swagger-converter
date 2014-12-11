@@ -2,49 +2,78 @@ var fs = require('fs');
 var path = require('path');
 var convert = require('..');
 var expect = require('chai').expect;
+var inputPath = './test/input/';
+var outputPath = './test/output/';
 
 require('mocha-jshint')();
 require('mocha-jscs')();
 
-// TODO: petstore example output is not perfect output. Update the output file
-['minimal', 'embedded', 'petstore'].forEach(testInput);
+var inputs = [
+  {
+    resourceListing: 'minimal/index.json',
+    apiDeclarations: ['minimal/pets.json'],
+    output: 'minimal.json'
+  },
+  {
+    resourceListing: 'embedded/index.json',
+    apiDeclarations: [],
+    output: 'embedded.json'
+  },
+  {
+    resourceListing: 'petstore/index.json',
+    apiDeclarations: [
+      'petstore/pet.json',
+      'petstore/user.json',
+      'petstore/store.json'
+    ],
+    // TODO: petstore example output is not perfect output. Update the output
+    output: 'petstore.json'
+  }
+];
 
-function testInput(fileName) {
-  var input = path.join('./test/input/', fileName, '/index.json');
-  var outputPath = path.join('./test/output/', fileName + '.json');
-  var outputFile = fs.readFileSync(outputPath);
+// Run testInput for each input folder
+inputs.forEach(testInput);
+
+function testInput(input) {
+
+  var outputFile = fs.readFileSync(path.join(outputPath, input.output));
   var outputObject = JSON.parse(outputFile.toString());
+  var resourceListingPath = path.join(inputPath, input.resourceListing);
+  var resourceListingFile = fs.readFileSync(resourceListingPath).toString();
+  var resourceListing = JSON.parse(resourceListingFile);
+  var apiDeclarations = input.apiDeclarations.map(function(apiDeclaration) {
+    var apiDeclarationPath = path.join(inputPath, apiDeclaration);
+    var apiDeclarationFile = fs.readFileSync(apiDeclarationPath).toString();
+    return JSON.parse(apiDeclarationFile);
+  });
 
-  convert(input, function(error, converted) {
+  // Do the conversion
+  var converted = convert(resourceListing, apiDeclarations);
 
-    fs.writeFileSync(fileName + '-converted',
-      JSON.stringify(converted, null, 4));
+  // For debugging:
+  // fs.writeFileSync(input.output + '-converted',
+  //   JSON.stringify(converted, null, 4));
 
-    describe('converting file: ' + fileName, function() {
+  describe('converting file: ' + input.resourceListing, function() {
+    describe('output', function() {
 
-      it('should have no errors', function() {
-        expect(!!error).to.be.false;
+      it('should be an object', function() {
+        expect(converted).is.a('object');
       });
 
-      describe('output', function() {
+      it('should have info property and required properties', function() {
+        expect(converted).to.have.property('info').that.is.a('object');
+        expect(converted.info).to.have.property('title').that.is.a('string');
+      });
 
-        it('should be an object', function() {
-          expect(converted).is.a('object');
-        });
+      it('should have paths property that is an object', function() {
+        expect(converted).to.have.property('paths').that.is.a('object');
+      });
 
-        it('should have info property and required properties', function() {
-          expect(converted).to.have.property('info').that.is.a('object');
-          expect(converted.info).to.have.property('title').that.is.a('string');
-        });
-
-        it('should have paths property that is an object', function() {
-          expect(converted).to.have.property('paths').that.is.a('object');
-        });
-
-        it('should produce the same output as output file', function() {
-          expect(converted).to.deep.equal(outputObject);
-        });
+      it('should produce the same output as output file', function() {
+        expect(converted).to.deep.equal(outputObject);
       });
     });
   });
+
 }
