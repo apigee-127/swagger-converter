@@ -159,9 +159,12 @@ function assignPathComponents(basePath, result) {
  * @returns {object} - Swagger 2.0 equivalent
  */
 function processDataType(field) {
-  if (field.$ref) {
+  // Checking for the existence of '#/definitions/' is related to this bug:
+  //   https://github.com/apigee-127/swagger-converter/issues/6
+  if (field.$ref && field.$ref.indexOf('#/definitions/') === -1) {
     field.$ref = '#/definitions/' + field.$ref;
-  } else if (field.items && field.items.$ref) {
+  } else if (field.items && field.items.$ref &&
+             field.items.$ref.indexOf('#/definitions/') === -1) {
     field.items.$ref = '#/definitions/' + field.items.$ref;
   }
 
