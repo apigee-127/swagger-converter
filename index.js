@@ -45,7 +45,7 @@ function convert(resourceListing, apiDeclarations) {
     throw new Error('resourceListing must be an object');
   }
   if (!Array.isArray(apiDeclarations)) {
-    throw new Error('apiDeclarations mus be an array');
+    apiDeclaration = [];
   }
 
   var convertedSecurityNames = {};
