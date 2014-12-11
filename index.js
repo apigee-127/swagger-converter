@@ -28,13 +28,14 @@ var path = require('path');
 /*
  * Process a data type object.
  *
- * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/1.2.md#433-data-type-fields}
+ * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
+ *  1.2.md#433-data-type-fields}
  *
  * @param field {object} - A data type field
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-function processDataType (field) {
+function processDataType(field) {
   if (field.$ref) {
     field.$ref = '#/definitions/' + field.$ref;
   } else if (field.items && field.items.$ref) {
@@ -82,7 +83,8 @@ module.exports = function convert(sourceUri, callback) {
     };
 
     if (source.authorizations) {
-      result.securityDefinitions = buildSecurityDefinitions(source, convertedSecurityNames);
+      result.securityDefinitions = buildSecurityDefinitions(source,
+        convertedSecurityNames);
     }
 
     if (source.basePath) {
@@ -251,7 +253,7 @@ function buildOperation(oldOperation, oldPath) {
 
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {
-    operation.parameters = oldOperation.parameters.map(function (parameter) {
+    operation.parameters = oldOperation.parameters.map(function(parameter) {
       return buildParameter(processDataType(parameter));
     });
   }
@@ -312,7 +314,7 @@ function buildParameter(oldParameter) {
     parameter.in = 'formData';
   }
 
-  ['default', 'maximum', 'minimum', 'items'].forEach(function (name) {
+  ['default', 'maximum', 'minimum', 'items'].forEach(function(name) {
     if (oldParameter[name]) {
       parameter[name] = oldParameter[name];
     }
@@ -322,25 +324,27 @@ function buildParameter(oldParameter) {
 }
 
 /*
- * Convertes Swagger 1.2 authorization definitions to Swagger 2.0 security definitions
+ * Convertes Swagger 1.2 authorization definitions to Swagger 2.0 security
+ *   definitions
  *
  * @param resourceListing {object} - The Swagger 1.2 Resource Listing document
- * @param convertedSecurityNames {object} - A list of original Swagger 1.2 authorization names and the new Swagger 2.0
- *                                          security names associated with it (This is required because Swagger 2.0 only
- *                                          supports one oauth2 flow per security definition but in Swagger 1.2 you
- *                                          could describe two (implicit and authorization_code).  To support this, we
- *                                          will create a per-flow version of each oauth2 definition, where necessary,
- *                                          and keep track of the new names so that when we handle security references
- *                                          we reference things properly.)
+ * @param convertedSecurityNames {object} - A list of original Swagger 1.2
+ * authorization names and the new Swagger 2.0
+ *  security names associated with it (This is required because Swagger 2.0 only
+ *  supports one oauth2 flow per security definition but in Swagger 1.2 you
+ *  could describe two (implicit and authorization_code).  To support this, we
+ *  will create a per-flow version of each oauth2 definition, where necessary,
+ *  and keep track of the new names so that when we handle security references
+ *  we reference things properly.)
  *
  * @returns {object} - Swagger 2.0 security definitions
  */
 function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
   var securityDefinitions = {};
 
-  Object.keys(resourceListing.authorizations).forEach(function (name) {
+  Object.keys(resourceListing.authorizations).forEach(function(name) {
     var authorization = resourceListing.authorizations[name];
-    var createDefinition = function createDefinition (oName) {
+    var createDefinition = function createDefinition(oName) {
       var securityDefinition = securityDefinitions[oName || name] = {
         type: authorization.type
       };
@@ -356,19 +360,24 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
       return securityDefinition;
     };
 
-    // For oauth2 types, 1.2 describes multiple "flows" in one auth and for 2.0, that is not an option so we need to
+    // For oauth2 types, 1.2 describes multiple "flows" in one auth and for 2.0,
+    // that is not an option so we need to
     // create one security definition per flow and keep track of this mapping.
     if (authorization.grantTypes) {
       convertedSecurityNames[name] = [];
 
-      Object.keys(authorization.grantTypes).forEach(function (gtName) {
+      Object.keys(authorization.grantTypes).forEach(function(gtName) {
         var grantType = authorization.grantTypes[gtName];
         var oName = name + '_' + gtName;
         var securityDefinition = createDefinition(oName);
 
         convertedSecurityNames[name].push(oName);
 
-        securityDefinition.flow = gtName === 'implicit' ? 'implicit' : 'accessCode';
+        if (gtName === 'implicit') {
+          securityDefinition.flow = 'implicit';
+        } else {
+          securityDefinition.flow = 'accessCode';
+        }
 
         switch (gtName) {
         case 'implicit':
@@ -376,7 +385,8 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
           break;
 
         case 'authorization_code':
-          securityDefinition.authorizationUrl = grantType.tokenRequestEndpoint.url;
+          securityDefinition.authorizationUrl =
+            grantType.tokenRequestEndpoint.url;
           securityDefinition.tokenUrl = grantType.tokenEndpoint.url;
           break;
         }
@@ -384,8 +394,9 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
         if (authorization.scopes) {
           securityDefinition.scopes = {};
 
-          authorization.scopes.forEach(function (scope) {
-            securityDefinition.scopes[scope.scope] = scope.definition || ('Undescribed ' + scope.scope);
+          authorization.scopes.forEach(function(scope) {
+            securityDefinition.scopes[scope.scope] = scope.definition ||
+              ('Undescribed ' + scope.scope);
           });
         }
       });
@@ -404,7 +415,8 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
 function transformModel(model) {
   if (typeof model.properties === 'object') {
     Object.keys(model.properties).forEach(function(propertieName) {
-      model.properties[propertieName] = processDataType(model.properties[propertieName]);
+      model.properties[propertieName] =
+        processDataType(model.properties[propertieName]);
     });
   }
 }
@@ -434,8 +446,8 @@ function transformAllModels(models) {
     }
   });
 
-  Object.keys(hierarchy).forEach(function (parent) {
-    hierarchy[parent].forEach(function (childId) {
+  Object.keys(hierarchy).forEach(function(parent) {
+    hierarchy[parent].forEach(function(childId) {
       var childModel = models[childId];
 
       if (childModel) {
