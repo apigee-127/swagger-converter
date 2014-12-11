@@ -64,7 +64,6 @@
             {
               "name": "status",
               "description": "Status values that need to be considered for filter",
-              "defaultValue": "available",
               "required": true,
               "type": "string",
               "paramType": "query",
@@ -188,7 +187,8 @@
               "paramType": "path",
               "allowMultiple": false,
               "minimum": "1.0",
-              "maximum": "100000.0"
+              "maximum": "100000.0",
+              "defaultValue": "-1"
             }
           ],
           "responseMessages": [
@@ -356,7 +356,8 @@
           "format": "int64",
           "description": "unique identifier for the pet",
           "minimum": "0.0",
-          "maximum": "100.0"
+          "maximum": "100.0",
+          "defaultValue": "-1"
         },
         "category": {
           "$ref": "Category"
