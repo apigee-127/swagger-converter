@@ -371,7 +371,7 @@
                     "maximum": 100.0
                 },
                 "category": {
-                    "$ref": "Category"
+                    "$ref": "#/definitions/Category"
                 },
                 "name": {
                     "type": "string"
@@ -385,7 +385,7 @@
                 "tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "Tag"
+                        "$ref": "#/definitions/Tag"
                     }
                 },
                 "status": {
