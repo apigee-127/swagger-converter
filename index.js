@@ -24,6 +24,14 @@
 
 var urlParse = require('url').parse;
 
+if (typeof window === 'undefined') {
+  module.exports = convert;
+} else {
+  window.SwaggerConverter = window.SwaggerConverter || {
+    convert: convert
+  };
+}
+
 /*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
  * @param resourceListing {object} - root Swagger 1.2 document where it has a
@@ -32,7 +40,7 @@ var urlParse = require('url').parse;
  * resourceListing. Array of objects
  * @returns {object} - Fully converted Swagger 2.0 document
 */
-module.exports = function convert(resourceListing, apiDeclarations) {
+function convert(resourceListing, apiDeclarations) {
   if (typeof resourceListing !== 'object') {
     throw new Error('resourceListing must be an object');
   }
@@ -91,7 +99,7 @@ module.exports = function convert(resourceListing, apiDeclarations) {
   }
 
   return result;
-};
+}
 
 /*
  * Builds "info" section of Swagger 2.0 document

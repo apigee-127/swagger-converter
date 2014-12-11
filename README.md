@@ -30,7 +30,15 @@ var apiDeclarations = [
 var swagger2Document = convert(resourceListing, apiDeclarations);
 
 console.log(JSON.stringify(swagger2Document, null, 2));
+```
 
+##### In browser
+Install it via bower via `bower install --save swagger-converter` or download and include the script manually
+```html
+  <script src="/path/to/swagger-converter/index.js"></script>
+```
+```javascript
+var convert = SwaggerConverter.convert;
 ```
 
 ### Development
