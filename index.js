@@ -26,46 +26,6 @@ var getFile = require('./get-file');
 var path = require('path');
 
 /*
- * Process a data type object.
- *
- * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
- *  1.2.md#433-data-type-fields}
- *
- * @param field {object} - A data type field
- *
- * @returns {object} - Swagger 2.0 equivalent
- */
-function processDataType(field) {
-  if (field.$ref) {
-    field.$ref = '#/definitions/' + field.$ref;
-  } else if (field.items && field.items.$ref) {
-    field.items.$ref = '#/definitions/' + field.items.$ref;
-  }
-
-  if (field.minimum) {
-    field.minimum = parseInt(field.minimum);
-  }
-
-  if (field.maximum) {
-    field.maximum = parseInt(field.maximum);
-  }
-
-  if (field.defaultValue) {
-    if (field.type === 'integer') {
-      field.default = parseInt(field.defaultValue, 10);
-    } else if (field.type === 'number') {
-      field.default = parseFloat(field.defaultValue);
-    } else {
-      field.default = field.defaultValue;
-    }
-
-    delete field.defaultValue;
-  }
-
-  return field;
-}
-
-/*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
  * @param sourceUri {string} - entry point to Swagger 1.2 specs file. This can
  *  be an HTTP URL or a local file path
@@ -204,6 +164,46 @@ function buildPathsAndModels(source, basePath, callback) {
       }
     });
   }
+}
+
+/*
+ * Process a data type object.
+ *
+ * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
+ *  1.2.md#433-data-type-fields}
+ *
+ * @param field {object} - A data type field
+ *
+ * @returns {object} - Swagger 2.0 equivalent
+ */
+function processDataType(field) {
+  if (field.$ref) {
+    field.$ref = '#/definitions/' + field.$ref;
+  } else if (field.items && field.items.$ref) {
+    field.items.$ref = '#/definitions/' + field.items.$ref;
+  }
+
+  if (field.minimum) {
+    field.minimum = parseInt(field.minimum);
+  }
+
+  if (field.maximum) {
+    field.maximum = parseInt(field.maximum);
+  }
+
+  if (field.defaultValue) {
+    if (field.type === 'integer') {
+      field.default = parseInt(field.defaultValue, 10);
+    } else if (field.type === 'number') {
+      field.default = parseFloat(field.defaultValue);
+    } else {
+      field.default = field.defaultValue;
+    }
+
+    delete field.defaultValue;
+  }
+
+  return field;
 }
 
 /*
