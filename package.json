@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/mocha/bin/mocha",
-    "build": "npm test; ./node_modules/browserify/bin/cmd.js ./index.js > ./browser.js; ./node_modules/uglify-js/bin/uglifyjs ./browser.js > ./browser.min.js"
+    "build": "npm test; ./node_modules/browserify/bin/cmd.js ./index.js > ./browser.js; ./node_modules/uglify-js/bin/uglifyjs ./browser.js > ./browser.min.js",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
