@@ -2,6 +2,7 @@ var fs = require('fs');
 var path = require('path');
 var convert = require('..');
 var expect = require('chai').expect;
+var Immutable = require('seamless-immutable');
 var inputPath = './test/input/';
 var outputPath = './test/output/';
 
@@ -51,6 +52,11 @@ function testInput(input) {
     var apiDeclarationFile = fs.readFileSync(apiDeclarationPath).toString();
     return JSON.parse(apiDeclarationFile);
   });
+
+  // Make resourceListing and apiDeclarations Immutable to make sure API is
+  // working without touching the input objects
+  resourceListing = new Immutable(resourceListing);
+  apiDeclarations = new Immutable(apiDeclarations);
 
   // Do the conversion
   var converted = convert(resourceListing, apiDeclarations);
