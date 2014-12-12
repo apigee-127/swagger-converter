@@ -28,6 +28,11 @@ var inputs = [
     ],
     // TODO: petstore example output is not perfect output. Update the output
     output: 'petstore.json'
+  },
+  {
+    resourceListing: 'complex-parameters/index.json',
+    apiDeclarations: [],
+    output: 'complex-parameters.json'
   }
 ];
 
