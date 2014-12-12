@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/mocha/bin/mocha",
-    "build": "./node_modules/browserify/bin/cmd.js ./index.js > ./browser.js"
+    "build": "npm test; ./node_modules/browserify/bin/cmd.js ./index.js > ./browser.js; ./node_modules/uglify-js/bin/uglifyjs ./browser.js > ./browser.min.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +27,7 @@
     "jscs": "^1.8.1",
     "mocha": "^2.0.1",
     "mocha-jscs": "^1.0.2",
-    "mocha-jshint": "0.0.9"
+    "mocha-jshint": "0.0.9",
+    "uglify-js": "^2.4.16"
   }
 }
