@@ -176,12 +176,22 @@ function processDataType(field) {
     field.items.$ref = '#/definitions/' + field.items.$ref;
   }
 
-  if (field.minimum) {
-    field.minimum = parseInt(field.minimum);
-  }
+  if (field.type === 'integer') {
+    if (field.minimum) {
+      field.minimum = parseInt(field.minimum, 10);
+    }
 
-  if (field.maximum) {
-    field.maximum = parseInt(field.maximum);
+    if (field.maximum) {
+      field.maximum = parseInt(field.maximum, 10);
+    }
+  } else {
+    if (field.minimum) {
+      field.minimum = parseFloat(field.minimum);
+    }
+
+    if (field.maximum) {
+      field.maximum = parseFloat(field.maximum);
+    }
   }
 
   if (field.defaultValue) {
