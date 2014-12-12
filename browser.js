@@ -292,24 +292,42 @@ function buildParameter(oldParameter) {
     name: oldParameter.name,
     required: !!oldParameter.required
   };
-  var literalTypes = ['string', 'number', 'boolean', 'integer', 'array', 'void',
-    'File'];
-  if (literalTypes.indexOf(oldParameter.type) === -1) {
+  var primitiveTypes = [
+    'string',
+    'number',
+    'boolean',
+    'integer',
+    'array',
+    'void',
+    'File'
+  ];
+  var copyProperties = [
+    'default',
+    'maximum',
+    'minimum',
+    'items'
+  ];
+
+  if (primitiveTypes.indexOf(oldParameter.type) === -1) {
     parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
   } else {
     parameter.type = oldParameter.type.toLowerCase();
+
+    copyProperties.forEach(function(name) {
+      if (typeof oldParameter[name] !== 'undefined') {
+        parameter[name] = oldParameter[name];
+      }
+    });
+
+    if (typeof oldParameter.defaultValue !== 'undefined') {
+      parameter.default = oldParameter.defaultValue;
+    }
   }
 
   // form was changed to formData in Swagger 2.0
   if (parameter.in === 'form') {
     parameter.in = 'formData';
   }
-
-  ['default', 'maximum', 'minimum', 'items'].forEach(function(name) {
-    if (oldParameter[name]) {
-      parameter[name] = oldParameter[name];
-    }
-  });
 
   return parameter;
 }

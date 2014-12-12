@@ -1,7 +1,7 @@
 {
   "excludeFiles": [
     "node_modules/**/*",
-    "./browser.js"
+    "./browser.*"
   ],
   "requireCurlyBraces": [
     "if",
