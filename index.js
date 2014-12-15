@@ -23,6 +23,7 @@
  */
 
 var urlParse = require('url').parse;
+var clone = require('lodash.clonedeep');
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -167,6 +168,8 @@ function assignPathComponents(basePath, result) {
  * @returns {object} - Swagger 2.0 equivalent
  */
 function processDataType(field) {
+  field = clone(field);
+
   // Checking for the existence of '#/definitions/' is related to this bug:
   //   https://github.com/apigee-127/swagger-converter/issues/6
   if (field.$ref && field.$ref.indexOf('#/definitions/') === -1) {
@@ -446,14 +449,16 @@ function transformModel(model) {
  * @returns {object} - transformed modles object
 */
 function transformAllModels(models) {
+  var modelsClone = clone(models);
+
   if (typeof models !== 'object') {
     throw new Error('models must be object');
   }
 
   var hierarchy = {};
 
-  Object.keys(models).forEach(function(modelId) {
-    var model = models[modelId];
+  Object.keys(modelsClone).forEach(function(modelId) {
+    var model = modelsClone[modelId];
 
     transformModel(model);
 
@@ -466,7 +471,7 @@ function transformAllModels(models) {
 
   Object.keys(hierarchy).forEach(function(parent) {
     hierarchy[parent].forEach(function(childId) {
-      var childModel = models[childId];
+      var childModel = modelsClone[childId];
 
       if (childModel) {
         childModel.allOf = (childModel.allOf || []).concat({
@@ -476,7 +481,7 @@ function transformAllModels(models) {
     });
   });
 
-  return models;
+  return modelsClone;
 }
 
 /*
