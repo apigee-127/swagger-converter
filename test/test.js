@@ -2,6 +2,7 @@ var fs = require('fs');
 var path = require('path');
 var convert = require('..');
 var expect = require('chai').expect;
+var SwaggerTools = require('swagger-tools');
 var Immutable = require('seamless-immutable');
 var inputPath = './test/input/';
 var outputPath = './test/output/';
@@ -79,6 +80,12 @@ function testInput(input) {
 
       it('should have paths property that is an object', function() {
         expect(converted).to.have.property('paths').that.is.a('object');
+      });
+
+      it('should generate valid Swagger 2.0 document', function() {
+        SwaggerTools.specs.v2.validate(converted, function(validationErrors) {
+          expect(validationErrors).to.be.undefined;
+        });
       });
 
       it('should produce the same output as output file', function() {
