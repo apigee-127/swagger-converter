@@ -24,23 +24,49 @@
 
 var urlParse = require('url').parse;
 var clone = require('lodash.clonedeep');
+var async = require('async');
+var request = require('request');
+
+/*
+ * Definition of a 'convert()' facade function.
+ */
+var facade = function( ) {
+    
+  /*
+	 * check the type of the first argument if it's a string the return the
+	 * 'convertFromUrl' function - else return the default one
+	 */
+  if ( arguments.length === 0 )
+    throw new Error("The convert() method expects at least 1 argument.");
+	
+  if ( typeof arguments[0] === 'string' ) {
+    return convertFromUrl.apply(this, arguments);
+  } else {
+    return convert.apply(this, arguments);
+  }
+};
 
 if (typeof window === 'undefined') {
-  module.exports = convert;
+  
+	/*
+	 * export a single interface so not to break other clients and decide which
+	 * method to call depending on the number and type of arguments
+	 */
+  module.exports = facade;
+	
 } else {
-  window.SwaggerConverter = window.SwaggerConverter || {
-    convert: convert
-  };
+
+	window.SwaggerConverter = window.SwaggerConverter || {
+		convert: facade
+	};
 }
 
 /*
- * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
- * @param resourceListing {object} - root Swagger 1.2 document where it has a
- *  list of all paths
- * @param apiDeclarations {array} - a list of all resources listed in
- * resourceListing. Array of objects
- * @returns {object} - Fully converted Swagger 2.0 document
-*/
+ * Converts Swagger 1.2 specs file to Swagger 2.0 specs. @param resourceListing
+ * {object} - root Swagger 1.2 document where it has a list of all paths @param
+ * apiDeclarations {array} - a list of all resources listed in resourceListing.
+ * Array of objects @returns {object} - Fully converted Swagger 2.0 document
+ */
 function convert(resourceListing, apiDeclarations) {
   if (typeof resourceListing !== 'object') {
     throw new Error('resourceListing must be an object');
@@ -102,11 +128,154 @@ function convert(resourceListing, apiDeclarations) {
   return result;
 }
 
+
 /*
- * Builds "info" section of Swagger 2.0 document
- * @param source {object} - Swagger 1.2 document object
- * @returns {object} - "info" section of Swagger 2.0 document
-*/
+ * Converts a Swagger 1.2 API documentation directly from its URL. @param
+ * baseUrl {string} - The URL of the base Swagger resource @param cb {function} -
+ * cb - function(err, api) @returns {object} - Fully converted Swagger 2.0 document
+ */
+function convertFromUrl( baseUrl, cb ){
+	
+	try {
+		
+		/*
+		 * get the base API resource definition from the provided URL
+		 */
+		getResource(baseUrl, function(err, response){
+			
+			if (err)
+				return cb(err);
+			
+			try {
+				
+				// try to parse the JSON document
+				var resource = JSON.parse(response);
+				
+				/*
+				 * try to parse the full API starting from the base resource
+				 */
+				parseFullApi( baseUrl, resource, function(err, api){
+					
+					if (err)
+						cb(err);
+					else
+						cb(null, api);
+				});
+			}
+			catch (e)
+			{
+				// return the error
+				return cb(e);
+			}
+		});
+		
+	} catch (e) {
+		console.error(e);
+	}
+	
+}
+
+/**
+ * Fetch the contents of a resource from the given URL.
+ * 
+ * @param url
+ *          The URL of the resource
+ * @param cb
+ *          Callback function
+ */
+function getResource( url, cb ){
+	
+	try {
+		
+		// make an HTTP request
+		request(url, function(error,
+				response, body) {
+			
+			if (!error && response.statusCode === 200)
+				cb(null, body );
+			else
+				cb(error);
+		});
+		
+	} catch (e) {
+		console.error(e);
+	}
+	
+}
+
+/**
+ * 
+ * @param resource
+ * @returns
+ */
+function parseFullApi( baseUrl, resource, cb ){
+	
+	try {
+		
+		var paths = [];
+				
+		for (var idx in resource.apis)
+		{
+			var path = baseUrl + resource.apis[idx].path;
+			paths.push( path );
+		}
+		
+		var subresources = [];
+		
+		var api = {
+			resourceListing : resource,
+			apiDeclarations : subresources,
+			output : 'radio.json'
+		};
+
+		/*
+		 * fetch the sub-resources in parallel
+		 */
+		async.map( paths, function(url, cb){
+			
+			// fetch the URL contents
+			getResource(url, function(err, response){
+				if (err)
+					cb(err);
+				else
+					cb(null, response);
+			});
+			
+		}.bind(), function(err, results){
+			
+			if (err)
+				return console.error(err);
+			
+			/*
+			 * loop through the result set
+			 */
+			for (var idx in results)
+			{
+				// parse the JSON contents
+				var json = JSON.parse( results[idx] );
+				subresources.push( json );
+			}
+			
+			// convert the API
+			var converted = convert( api.resourceListing, api.apiDeclarations );
+			
+			// return the converted API
+			cb( null, converted );
+		});
+		
+	
+		
+	} catch (e) {
+		console.error(e);
+	}
+}
+
+
+/*
+ * Builds "info" section of Swagger 2.0 document @param source {object} -
+ * Swagger 1.2 document object @returns {object} - "info" section of Swagger 2.0
+ * document
+ */
 function buildInfo(source) {
   var info = {
     version: source.apiVersion,
@@ -146,10 +315,9 @@ function buildInfo(source) {
 
 /*
  * Assigns host, basePath and schemes for Swagger 2.0 result document from
- * Swagger 1.2 basePath.
- * @param basePath {string} - the base path from Swagger 1.2
- * @param result {object} - Swagger 2.0 document
-*/
+ * Swagger 1.2 basePath. @param basePath {string} - the base path from Swagger
+ * 1.2 @param result {object} - Swagger 2.0 document
+ */
 function assignPathComponents(basePath, result) {
   var url = urlParse(basePath);
   result.host = url.host;
@@ -159,19 +327,19 @@ function assignPathComponents(basePath, result) {
 
 /*
  * Process a data type object.
- *
+ * 
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
- *  1.2.md#433-data-type-fields}
- *
+ *      1.2.md#433-data-type-fields}
+ * 
  * @param field {object} - A data type field
- *
+ * 
  * @returns {object} - Swagger 2.0 equivalent
  */
 function processDataType(field) {
   field = clone(field);
 
   // Checking for the existence of '#/definitions/' is related to this bug:
-  //   https://github.com/apigee-127/swagger-converter/issues/6
+  // https://github.com/apigee-127/swagger-converter/issues/6
   if (field.$ref && field.$ref.indexOf('#/definitions/') === -1) {
     field.$ref = '#/definitions/' + field.$ref;
   } else if (field.items && field.items.$ref &&
@@ -213,11 +381,10 @@ function processDataType(field) {
 }
 
 /*
- * Builds a Swagger 2.0 path object form a Swagger 1.2 path object
- * @param api {object} - Swagger 1.2 path object
- * @param apiDeclaration {object} - parent apiDeclaration
- * @returns {object} - Swagger 2.0 path object
-*/
+ * Builds a Swagger 2.0 path object form a Swagger 1.2 path object @param api
+ * {object} - Swagger 1.2 path object @param apiDeclaration {object} - parent
+ * apiDeclaration @returns {object} - Swagger 2.0 path object
+ */
 function buildPath(api, apiDeclaration) {
   var path = {};
 
@@ -232,11 +399,10 @@ function buildPath(api, apiDeclaration) {
 
 /*
  * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
- * @param oldOperation {object} - Swagger 1.2 operation object
- * @param produces {array} - from containing apiDeclaration
- * @param consumes {array} - from containing apiDeclaration
- * @returns {object} - Swagger 2.0 operation object
-*/
+ * @param oldOperation {object} - Swagger 1.2 operation object @param produces
+ * {array} - from containing apiDeclaration @param consumes {array} - from
+ * containing apiDeclaration @returns {object} - Swagger 2.0 operation object
+ */
 function buildOperation(oldOperation, produces, consumes) {
   var operation = {
     responses: {},
@@ -280,9 +446,9 @@ function buildOperation(oldOperation, produces, consumes) {
 
 /*
  * Builds a Swagger 2.0 response object form a Swagger 1.2 response object
- * @param oldResponse {object} - Swagger 1.2 response object
- * @returns {object} - Swagger 2.0 response object
-*/
+ * @param oldResponse {object} - Swagger 1.2 response object @returns {object} -
+ * Swagger 2.0 response object
+ */
 function buildResponse(oldResponse) {
   var response = {};
 
@@ -293,10 +459,10 @@ function buildResponse(oldResponse) {
 }
 
 /*
- * Converts Swagger 1.2 parameter object to Swagger 2.0 parameter object
- * @param oldParameter {object} - Swagger 1.2 parameter object
- * @returns {object} - Swagger 2.0 parameter object
-*/
+ * Converts Swagger 1.2 parameter object to Swagger 2.0 parameter object @param
+ * oldParameter {object} - Swagger 1.2 parameter object @returns {object} -
+ * Swagger 2.0 parameter object
+ */
 function buildParameter(oldParameter) {
   var parameter = {
     in: oldParameter.paramType,
@@ -346,18 +512,17 @@ function buildParameter(oldParameter) {
 
 /*
  * Convertes Swagger 1.2 authorization definitions to Swagger 2.0 security
- *   definitions
- *
+ * definitions
+ * 
  * @param resourceListing {object} - The Swagger 1.2 Resource Listing document
  * @param convertedSecurityNames {object} - A list of original Swagger 1.2
- * authorization names and the new Swagger 2.0
- *  security names associated with it (This is required because Swagger 2.0 only
- *  supports one oauth2 flow per security definition but in Swagger 1.2 you
- *  could describe two (implicit and authorization_code).  To support this, we
- *  will create a per-flow version of each oauth2 definition, where necessary,
- *  and keep track of the new names so that when we handle security references
- *  we reference things properly.)
- *
+ * authorization names and the new Swagger 2.0 security names associated with it
+ * (This is required because Swagger 2.0 only supports one oauth2 flow per
+ * security definition but in Swagger 1.2 you could describe two (implicit and
+ * authorization_code). To support this, we will create a per-flow version of
+ * each oauth2 definition, where necessary, and keep track of the new names so
+ * that when we handle security references we reference things properly.)
+ * 
  * @returns {object} - Swagger 2.0 security definitions
  */
 function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
@@ -430,9 +595,9 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
 }
 
 /*
- * Transforms a Swagger 1.2 model object to a Swagger 2.0 model object
- * @param model {object} - (mutable) Swagger 1.2 model object
-*/
+ * Transforms a Swagger 1.2 model object to a Swagger 2.0 model object @param
+ * model {object} - (mutable) Swagger 1.2 model object
+ */
 function transformModel(model) {
   if (typeof model.properties === 'object') {
     Object.keys(model.properties).forEach(function(propertieName) {
@@ -444,10 +609,9 @@ function transformModel(model) {
 
 /*
  * Transfers the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
- * object
- * @param models {object} - (mutable) an object containing Swagger 1.2 objects
- * @returns {object} - transformed modles object
-*/
+ * object @param models {object} - (mutable) an object containing Swagger 1.2
+ * objects @returns {object} - transformed modles object
+ */
 function transformAllModels(models) {
   var modelsClone = clone(models);
 
@@ -485,10 +649,9 @@ function transformAllModels(models) {
 }
 
 /*
- * Extends an object with another
- * @param source {object} - object that will get extended
- * @parma distention {object} - object the will used to extend source
-*/
+ * Extends an object with another @param source {object} - object that will get
+ * extended @parma distention {object} - object the will used to extend source
+ */
 function extend(source, distention) {
   if (typeof source !== 'object') {
     throw new Error('source must be objects');

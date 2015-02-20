@@ -8,7 +8,7 @@ var inputPath = './test/input/';
 var outputPath = './test/output/';
 
 require('mocha-jshint')();
-require('mocha-jscs')();
+//require('mocha-jscs')();
 
 var inputs = [
   {
