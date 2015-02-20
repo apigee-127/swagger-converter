@@ -37,7 +37,7 @@ var facade = function( ) {
 	 * 'convertFromUrl' function - else return the default one
 	 */
   if ( arguments.length === 0 )
-    throw "The convert() method expects at least 1 argument.";
+    throw new Error("The convert() method expects at least 1 argument.");
 	
   if ( typeof arguments[0] === 'string' ) {
     return convertFromUrl.apply(this, arguments);
@@ -132,8 +132,7 @@ function convert(resourceListing, apiDeclarations) {
 /*
  * Converts a Swagger 1.2 API documentation directly from its URL. @param
  * baseUrl {string} - The URL of the base Swagger resource @param cb {function} -
- * Callback - function(err, api) @returns {object} - Fully converted Swagger 2.0
- * document
+ * cb - function(err, api) @returns {object} - Fully converted Swagger 2.0 document
  */
 function convertFromUrl( baseUrl, cb ){
 	
