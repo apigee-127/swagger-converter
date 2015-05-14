@@ -459,6 +459,7 @@ function transformAllModels(models) {
 
   Object.keys(modelsClone).forEach(function(modelId) {
     var model = modelsClone[modelId];
+    delete model['id'];
 
     transformModel(model);
 
