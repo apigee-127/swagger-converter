@@ -480,7 +480,9 @@ function transformAllModels(models) {
         var allOf = (childModel.allOf || []).concat({
           $ref: '#/definitions/' + parent
         }).concat(clone(childModel));
-        for (var member in childModel) delete childModel[member];
+        for (var member in childModel) {
+          delete childModel[member];
+        }
         childModel.allOf = allOf;
       }
     });
