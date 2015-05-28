@@ -154,7 +154,9 @@ function assignPathComponents(basePath, result) {
   var url = urlParse(basePath);
   result.host = url.host;
   result.basePath = url.path;
-  result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
+  if (url.protocol) {
+    result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
+  }
 }
 
 /*
@@ -475,9 +477,13 @@ function transformAllModels(models) {
       var childModel = modelsClone[childId];
 
       if (childModel) {
-        childModel.allOf = (childModel.allOf || []).concat({
+        var allOf = (childModel.allOf || []).concat({
           $ref: '#/definitions/' + parent
-        });
+        }).concat(clone(childModel));
+        for (var member in childModel) {
+          delete childModel[member];
+        }
+        childModel.allOf = allOf;
       }
     });
   });
