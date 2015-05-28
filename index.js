@@ -477,9 +477,11 @@ function transformAllModels(models) {
       var childModel = modelsClone[childId];
 
       if (childModel) {
-        childModel.allOf = (childModel.allOf || []).concat({
+        var allOf = (childModel.allOf || []).concat({
           $ref: '#/definitions/' + parent
-        });
+        }).concat(clone(childModel));
+        for (var member in childModel) delete childModel[member];
+        childModel.allOf = allOf;
       }
     });
   });
