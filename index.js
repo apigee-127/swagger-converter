@@ -154,7 +154,9 @@ function assignPathComponents(basePath, result) {
   var url = urlParse(basePath);
   result.host = url.host;
   result.basePath = url.path;
-  result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
+  if (url.protocol) {
+    result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
+  }
 }
 
 /*
