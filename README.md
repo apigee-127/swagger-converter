@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/apigee-127/swagger-converter.svg?branch=master)](https://travis-ci.org/apigee-127/swagger-converter)
 
-Swagger Converter converts [Swagger](http://swagger.io/) documents from version **1.2** to version **2.0**
+> Converts [Swagger](http://swagger.io/) documents from version **`1.2`** to version **`2.0`**
 
 ### Installation
 Use npm
@@ -19,17 +19,18 @@ Swagger Converter expects two arguments.
 
 ```javascript
 var convert = require('swagger-converter');
-var fs = require('fs');
-var resourceListing = JSON.parse(fs.readFileSync('/path/to/petstore/index.json').toString());
+
+var resourceListing = require('/path/to/petstore/index.json');
+
 var apiDeclarations = [
-  JSON.parse(fs.readFileSync('/path/to/petstore/pet.json').toString()),
-  JSON.parse(fs.readFileSync('/path/to/petstore/user.json').toString()),
-  JSON.parse(fs.readFileSync('/path/to/petstore/store.json').toString())
+  require('/path/to/petstore/pet.json'),
+  require('/path/to/petstore/user.json'),
+  require('/path/to/petstore/store.json')
 ];
 
 var swagger2Document = convert(resourceListing, apiDeclarations);
 
-console.log(JSON.stringify(swagger2Document, null, 2));
+console.log(swagger2Document);
 ```
 
 ##### In browser
