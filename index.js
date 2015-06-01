@@ -173,7 +173,7 @@ function assignPathComponents(basePath, result) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-function processDataType(field) {
+function processDataType(field, fixRef) {
   field = clone(field);
 
   // Checking for the existence of '#/definitions/' is related to this bug:
@@ -183,6 +183,22 @@ function processDataType(field) {
   } else if (field.items && field.items.$ref &&
              field.items.$ref.indexOf('#/definitions/') === -1) {
     field.items.$ref = '#/definitions/' + field.items.$ref;
+  }
+
+  if (fixRef) {
+    var primitiveTypes = [
+      'string',
+      'number',
+      'boolean',
+      'integer',
+      'array',
+      'void',
+      'File'
+    ];
+
+    if (primitiveTypes.indexOf(field.type) === -1) {
+      field = {$ref: '#/definitions/' + field.type};
+    }
   }
 
   if (field.type === 'integer') {
@@ -265,7 +281,7 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {
     operation.parameters = oldOperation.parameters.map(function(parameter) {
-      return buildParameter(processDataType(parameter));
+      return buildParameter(processDataType(parameter, false));
     });
   }
 
@@ -273,6 +289,14 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     oldOperation.responseMessages.forEach(function(oldResponse) {
       operation.responses[oldResponse.code] = buildResponse(oldResponse);
     });
+  }
+
+  if (oldOperation.type && oldOperation.type !== 'void') {
+    operation.responses['default'] = {
+      'schema': {
+        '$ref': '#/definitions/' + oldOperation.type,
+      }
+    };
   }
 
   if (!Object.keys(operation.responses).length) {
@@ -445,7 +469,7 @@ function transformModel(model) {
   if (typeof model.properties === 'object') {
     Object.keys(model.properties).forEach(function(propertieName) {
       model.properties[propertieName] =
-        processDataType(model.properties[propertieName]);
+        processDataType(model.properties[propertieName], true);
     });
   }
 }
