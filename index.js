@@ -70,7 +70,11 @@ function convert(resourceListing, apiDeclarations) {
 
   // Handle embedded documents
   if (Array.isArray(resourceListing.apis)) {
+    result.tags = [];
     resourceListing.apis.forEach(function(api) {
+      result.tags.push({ 
+        'name': api.path.replace('.{format}', '').substring(1),
+        'description': api.description });
       if (Array.isArray(api.operations)) {
         result.paths[api.path] = buildPath(api, resourceListing);
       }
@@ -226,7 +230,7 @@ function buildPath(api, apiDeclaration) {
   api.operations.forEach(function(oldOperation) {
     var method = oldOperation.method.toLowerCase();
     path[method] = buildOperation(oldOperation, apiDeclaration.produces,
-      apiDeclaration.consumes);
+      apiDeclaration.consumes, apiDeclaration.resourcePath);
   });
 
   return path;
@@ -239,11 +243,13 @@ function buildPath(api, apiDeclaration) {
  * @param consumes {array} - from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
-function buildOperation(oldOperation, produces, consumes) {
+function buildOperation(oldOperation, produces, consumes, resourcePath) {
   var operation = {
     responses: {},
     description: oldOperation.description || ''
   };
+  operation.tags = [];
+  operation.tags.push(resourcePath.substr(1));
 
   if (oldOperation.summary) {
     operation.summary = oldOperation.summary;
