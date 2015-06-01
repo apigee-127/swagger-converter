@@ -25,6 +25,16 @@
 var urlParse = require('url').parse;
 var clone = require('lodash.clonedeep');
 
+var primitiveTypes = [
+  'string',
+  'number',
+  'boolean',
+  'integer',
+  'array',
+  'void',
+  'File'
+];
+
 if (typeof window === 'undefined') {
   module.exports = convert;
 } else {
@@ -70,7 +80,15 @@ function convert(resourceListing, apiDeclarations) {
 
   // Handle embedded documents
   if (Array.isArray(resourceListing.apis)) {
+    if (apiDeclarations.length > 0) {
+      result.tags = [];
+    }
     resourceListing.apis.forEach(function(api) {
+      if (result.tags) {
+        result.tags.push({
+          'name': api.path.replace('.{format}', '').substring(1),
+          'description': api.description});
+      }
       if (Array.isArray(api.operations)) {
         result.paths[api.path] = buildPath(api, resourceListing);
       }
@@ -169,7 +187,7 @@ function assignPathComponents(basePath, result) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-function processDataType(field) {
+function processDataType(field, fixRef) {
   field = clone(field);
 
   // Checking for the existence of '#/definitions/' is related to this bug:
@@ -179,6 +197,12 @@ function processDataType(field) {
   } else if (field.items && field.items.$ref &&
              field.items.$ref.indexOf('#/definitions/') === -1) {
     field.items.$ref = '#/definitions/' + field.items.$ref;
+  }
+
+  if (fixRef) {
+    if (field.type && primitiveTypes.indexOf(field.type) === -1) {
+      field = {$ref: '#/definitions/' + field.type};
+    }
   }
 
   if (field.type === 'integer') {
@@ -226,7 +250,7 @@ function buildPath(api, apiDeclaration) {
   api.operations.forEach(function(oldOperation) {
     var method = oldOperation.method.toLowerCase();
     path[method] = buildOperation(oldOperation, apiDeclaration.produces,
-      apiDeclaration.consumes);
+      apiDeclaration.consumes, apiDeclaration.resourcePath);
   });
 
   return path;
@@ -239,11 +263,16 @@ function buildPath(api, apiDeclaration) {
  * @param consumes {array} - from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
-function buildOperation(oldOperation, produces, consumes) {
+function buildOperation(oldOperation, produces, consumes, resourcePath) {
   var operation = {
     responses: {},
     description: oldOperation.description || ''
   };
+
+  if (resourcePath) {
+    operation.tags = [];
+    operation.tags.push(resourcePath.substr(1));
+  }
 
   if (oldOperation.summary) {
     operation.summary = oldOperation.summary;
@@ -259,7 +288,7 @@ function buildOperation(oldOperation, produces, consumes) {
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {
     operation.parameters = oldOperation.parameters.map(function(parameter) {
-      return buildParameter(processDataType(parameter));
+      return buildParameter(processDataType(parameter, false));
     });
   }
 
@@ -267,6 +296,15 @@ function buildOperation(oldOperation, produces, consumes) {
     oldOperation.responseMessages.forEach(function(oldResponse) {
       operation.responses[oldResponse.code] = buildResponse(oldResponse);
     });
+  }
+
+  if (oldOperation.type && oldOperation.type !== 'void' &&
+      primitiveTypes.indexOf(oldOperation.type) === -1) {
+    operation.responses['default'] = {
+      'schema': {
+        '$ref': '#/definitions/' + oldOperation.type,
+      }
+    };
   }
 
   if (!Object.keys(operation.responses).length) {
@@ -306,15 +344,6 @@ function buildParameter(oldParameter) {
     name: oldParameter.name,
     required: !!oldParameter.required
   };
-  var primitiveTypes = [
-    'string',
-    'number',
-    'boolean',
-    'integer',
-    'array',
-    'void',
-    'File'
-  ];
   var copyProperties = [
     'default',
     'maximum',
@@ -439,7 +468,7 @@ function transformModel(model) {
   if (typeof model.properties === 'object') {
     Object.keys(model.properties).forEach(function(propertieName) {
       model.properties[propertieName] =
-        processDataType(model.properties[propertieName]);
+        processDataType(model.properties[propertieName], true);
     });
   }
 }

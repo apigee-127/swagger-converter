@@ -4,7 +4,7 @@
   "apis": [
     {
       "path": "/pets",
-      "description": ""
+      "description": "A list of pets"
     }
   ],
   "info": {

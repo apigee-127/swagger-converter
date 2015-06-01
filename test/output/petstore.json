@@ -13,6 +13,19 @@
         },
         "termsOfService": "http://helloreverb.com/terms/"
     },
+    "tags": [
+    {
+        "description": "Operations about pets",
+        "name": "pet"
+    },
+    {
+        "description": "Operations about user",
+        "name": "user"
+    },
+    {
+        "description": "Operations about store",
+        "name": "store"
+    }],
     "paths": {
         "/pet": {
             "put": {
@@ -30,6 +43,9 @@
                 "description": "",
                 "summary": "Update an existing pet",
                 "operationId": "updatePet",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -59,6 +75,9 @@
                 "description": "",
                 "summary": "Finds Pets by status",
                 "operationId": "findPetsByStatus",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -86,6 +105,9 @@
                 "description": "",
                 "summary": "Finds Pets by tags",
                 "operationId": "findPetsByTags",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -113,6 +135,9 @@
                 "description": "",
                 "summary": "Updates a pet in the store with form data",
                 "operationId": "updatePetWithForm",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -150,11 +175,19 @@
                     },
                     "404": {
                         "description": "Pet not found"
+                    },
+                    "default": {
+                        "schema": {
+                            "$ref": "#/definitions/Pet"
+                        }
                     }
                 },
                 "description": "",
                 "summary": "Find pet by ID",
                 "operationId": "getPetById",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -183,6 +216,9 @@
                 "description": "",
                 "summary": "Deletes a pet",
                 "operationId": "deletePet",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -208,6 +244,9 @@
                 "description": "",
                 "summary": "partial updates to a pet",
                 "operationId": "partialUpdate",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -244,6 +283,9 @@
                 "description": "",
                 "summary": "uploads an image",
                 "operationId": "uploadFile",
+                "tags": [
+                    "pet"
+                ],
                 "produces": [
                     "application/json",
                     "application/xml",
@@ -278,6 +320,9 @@
                 "description": "",
                 "summary": "Creates list of users with given input array",
                 "operationId": "createUsersWithArrayInput",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -305,6 +350,9 @@
                 "description": "",
                 "summary": "Creates list of users with given list input",
                 "operationId": "createUsersWithListInput",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -335,6 +383,9 @@
                 "description": "",
                 "summary": "Updated user",
                 "operationId": "updateUser",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -369,6 +420,9 @@
                 "description": "",
                 "summary": "Delete user",
                 "operationId": "deleteUser",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -389,11 +443,19 @@
                     },
                     "404": {
                         "description": "User not found"
+                    },
+                    "default": {
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
                     }
                 },
                 "description": "",
                 "summary": "Get user by user name",
                 "operationId": "getUserByName",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -418,6 +480,9 @@
                 "description": "",
                 "summary": "Logs user into the system",
                 "operationId": "loginUser",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -449,6 +514,9 @@
                 "description": "",
                 "summary": "Logs out current logged in user session",
                 "operationId": "logoutUser",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ]
@@ -464,6 +532,9 @@
                 "description": "",
                 "summary": "Create user",
                 "operationId": "createUser",
+                "tags": [
+                    "user"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -490,6 +561,9 @@
                 "description": "",
                 "summary": "Place an order for a pet",
                 "operationId": "placeOrder",
+                "tags": [
+                    "store"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -519,6 +593,9 @@
                 "description": "",
                 "summary": "Delete purchase order by ID",
                 "operationId": "deleteOrder",
+                "tags": [
+                    "store"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -539,11 +616,19 @@
                     },
                     "404": {
                         "description": "Order not found"
+                    },
+                    "default": {
+                        "schema": {
+                            "$ref": "#/definitions/Order"
+                        }
                     }
                 },
                 "description": "",
                 "summary": "Find purchase order by ID",
                 "operationId": "getOrderById",
+                "tags": [
+                    "store"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -658,7 +743,7 @@
             ],
             "properties": {
                 "id": {
-                    "type": "long"
+                    "type": "integer"
                 },
                 "type": {
                     "type": "string"
