@@ -408,7 +408,7 @@
       ],
       "properties": {
         "id": {
-          "type": "long"
+          "type": "integer"
         },
         "type": {
           "type": "string"

@@ -25,6 +25,16 @@
 var urlParse = require('url').parse;
 var clone = require('lodash.clonedeep');
 
+var primitiveTypes = [
+  'string',
+  'number',
+  'boolean',
+  'integer',
+  'array',
+  'void',
+  'File'
+];
+
 if (typeof window === 'undefined') {
   module.exports = convert;
 } else {
@@ -70,11 +80,15 @@ function convert(resourceListing, apiDeclarations) {
 
   // Handle embedded documents
   if (Array.isArray(resourceListing.apis)) {
-    result.tags = [];
+    if (apiDeclarations.length > 0) {
+      result.tags = [];
+    }
     resourceListing.apis.forEach(function(api) {
-      result.tags.push({ 
-        'name': api.path.replace('.{format}', '').substring(1),
-        'description': api.description });
+      if (result.tags) {
+        result.tags.push({
+          'name': api.path.replace('.{format}', '').substring(1),
+          'description': api.description});
+      }
       if (Array.isArray(api.operations)) {
         result.paths[api.path] = buildPath(api, resourceListing);
       }
@@ -186,17 +200,7 @@ function processDataType(field, fixRef) {
   }
 
   if (fixRef) {
-    var primitiveTypes = [
-      'string',
-      'number',
-      'boolean',
-      'integer',
-      'array',
-      'void',
-      'File'
-    ];
-
-    if (primitiveTypes.indexOf(field.type) === -1) {
+    if (field.type && primitiveTypes.indexOf(field.type) === -1) {
       field = {$ref: '#/definitions/' + field.type};
     }
   }
@@ -264,8 +268,11 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     responses: {},
     description: oldOperation.description || ''
   };
-  operation.tags = [];
-  operation.tags.push(resourcePath.substr(1));
+
+  if (resourcePath) {
+    operation.tags = [];
+    operation.tags.push(resourcePath.substr(1));
+  }
 
   if (oldOperation.summary) {
     operation.summary = oldOperation.summary;
@@ -291,7 +298,8 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     });
   }
 
-  if (oldOperation.type && oldOperation.type !== 'void') {
+  if (oldOperation.type && oldOperation.type !== 'void' &&
+      primitiveTypes.indexOf(oldOperation.type) === -1) {
     operation.responses['default'] = {
       'schema': {
         '$ref': '#/definitions/' + oldOperation.type,
@@ -336,15 +344,6 @@ function buildParameter(oldParameter) {
     name: oldParameter.name,
     required: !!oldParameter.required
   };
-  var primitiveTypes = [
-    'string',
-    'number',
-    'boolean',
-    'integer',
-    'array',
-    'void',
-    'File'
-  ];
   var copyProperties = [
     'default',
     'maximum',
