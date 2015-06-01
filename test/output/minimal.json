@@ -12,8 +12,15 @@
                     "200": {
                         "description": "Return all pets"
                     }
-                }
+                },
+                "tags": [
+                    "pets"
+                ]
             }
         }
-    }
+    },
+    "tags": [{
+        "description": "A list of pets",
+        "name": "pets"
+    }]
 }
