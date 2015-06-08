@@ -17,10 +17,27 @@
                     "pets"
                 ]
             }
+        },
+        "/stores": {
+            "get": {
+                "description": "",
+                "responses": {
+                    "200": {
+                        "description": "Return all stores"
+                    }
+                },
+                "tags": [
+                    "stores"
+                ]
+            }
         }
     },
     "tags": [{
         "description": "A list of pets",
         "name": "pets"
+    },
+    {
+        "description": "A list of stores",
+        "name": "stores"  
     }]
 }
