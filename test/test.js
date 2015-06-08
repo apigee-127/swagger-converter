@@ -13,7 +13,10 @@ require('mocha-jscs')();
 var inputs = [
   {
     resourceListing: 'minimal/index.json',
-    apiDeclarations: ['minimal/pets.json'],
+    apiDeclarations: [
+      'minimal/pets.json',
+      'minimal/stores.json'
+    ],
     output: 'minimal.json'
   },
   {

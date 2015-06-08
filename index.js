@@ -108,7 +108,7 @@ function convert(resourceListing, apiDeclarations) {
       result.paths[api.path] = buildPath(api, apiDeclaration);
 
     });
-    if (Object.keys(apiDeclaration.models).length) {
+    if (apiDeclaration.models && Object.keys(apiDeclaration.models).length) {
       extend(models, transformAllModels(apiDeclaration.models));
     }
   });
