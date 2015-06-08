@@ -5,6 +5,10 @@
     {
       "path": "/pets",
       "description": "A list of pets"
+    },
+    {
+      "path": "/stores",
+      "description": "A list of stores"
     }
   ],
   "info": {
