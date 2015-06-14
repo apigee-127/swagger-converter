@@ -344,27 +344,13 @@ function buildParameter(oldParameter) {
     name: oldParameter.name,
     required: !!oldParameter.required
   };
-  var copyProperties = [
-    'default',
-    'maximum',
-    'minimum',
-    'items'
-  ];
 
   if (primitiveTypes.indexOf(oldParameter.type) === -1) {
     parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
+  } else if (oldParameter.paramType === 'body') {
+    parameter.schema = buildParamType(oldParameter);
   } else {
-    parameter.type = oldParameter.type.toLowerCase();
-
-    copyProperties.forEach(function(name) {
-      if (typeof oldParameter[name] !== 'undefined') {
-        parameter[name] = oldParameter[name];
-      }
-    });
-
-    if (typeof oldParameter.defaultValue !== 'undefined') {
-      parameter.default = oldParameter.defaultValue;
-    }
+    extend(parameter, buildParamType(oldParameter));
   }
 
   // form was changed to formData in Swagger 2.0
@@ -373,6 +359,35 @@ function buildParameter(oldParameter) {
   }
 
   return parameter;
+}
+
+/*
+ * Converts Swagger 1.2 type fields from parameter object into their Swagger 2.0 conterparts
+ * @param oldParameter {object} - Swagger 1.2 parameter object
+ * @returns {object} - Swagger 2.0 type fields from parameter object
+*/
+function buildParamType(oldParameter) {
+  var paramType = {};
+  var copyProperties = [
+    'default',
+    'maximum',
+    'minimum',
+    'items'
+  ];
+
+  paramType.type = oldParameter.type.toLowerCase();
+
+  copyProperties.forEach(function(name) {
+    if (typeof oldParameter[name] !== 'undefined') {
+      paramType[name] = oldParameter[name];
+    }
+  });
+
+  if (typeof oldParameter.defaultValue !== 'undefined') {
+    paramType.default = oldParameter.defaultValue;
+  }
+
+  return paramType;
 }
 
 /*

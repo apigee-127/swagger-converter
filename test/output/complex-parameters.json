@@ -15,10 +15,12 @@
             "in": "body",
             "name": "document",
             "required": true,
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 100,
-            "default": 0
+            "schema": {
+                "type": "integer",
+                "maximum": 100,
+                "minimum": 0,
+                "default": 0
+            }
           }
         ],
         "responses": {
