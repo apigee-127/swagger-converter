@@ -332,9 +332,11 @@
                         "description": "List of user object",
                         "name": "body",
                         "required": true,
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/User"
+                        "schema": {
+                          "type": "array",
+                          "items": {
+                              "$ref": "#/definitions/User"
+                          }
                         }
                     }
                 ]
@@ -362,9 +364,11 @@
                         "description": "List of user object",
                         "name": "body",
                         "required": true,
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/User"
+                        "schema": {
+                          "type": "array",
+                          "items": {
+                              "$ref": "#/definitions/User"
+                          }
                         }
                     }
                 ]
