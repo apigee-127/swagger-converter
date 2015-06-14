@@ -540,16 +540,16 @@ function transformAllModels(models) {
 /*
  * Extends an object with another
  * @param source {object} - object that will get extended
- * @parma distention {object} - object the will used to extend source
+ * @parma destination {object} - object the will used to extend source
 */
-function extend(source, distention) {
+function extend(source, destination) {
   if (typeof source !== 'object') {
     throw new Error('source must be objects');
   }
 
-  if (typeof distention === 'object') {
-    Object.keys(distention).forEach(function(key) {
-      source[key] = distention[key];
+  if (typeof destination === 'object') {
+    Object.keys(destination).forEach(function(key) {
+      source[key] = destination[key];
     });
   }
 }
