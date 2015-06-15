@@ -76,7 +76,7 @@
                       "schema": {
                         "type": "array",
                         "items": {
-                          "$ref": "Pet"
+                          "$ref": "#/definitions/Pet"
                         }
                       }
                     },
@@ -115,7 +115,7 @@
                         "schema": {
                           "type": "array",
                           "items": {
-                            "$ref": "Pet"
+                            "$ref": "#/definitions/Pet"
                           }
                         }
                     },
@@ -270,7 +270,7 @@
                         "schema": {
                           "type": "array",
                           "items": {
-                            "$ref": "Pet"
+                            "$ref": "#/definitions/Pet"
                           }
                         }
                     },
