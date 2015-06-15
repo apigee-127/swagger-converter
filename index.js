@@ -288,7 +288,7 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {
     operation.parameters = oldOperation.parameters.map(function(parameter) {
-      return buildParameter(processDataType(parameter, false));
+      return buildParameter(parameter);
     });
   }
 
@@ -374,6 +374,8 @@ function buildParamType(oldParameter) {
     'minimum',
     'items'
   ];
+
+  oldParameter = processDataType(oldParameter, false);
 
   paramType.type = oldParameter.type.toLowerCase();
 
