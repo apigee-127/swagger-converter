@@ -28,6 +28,25 @@
             "description": "POST successful"
           }
         }
+      },
+      "get": {
+        "description": "",
+        "summary": "GET from root",
+        "parameters": [
+          {
+            "description": "The document ID",
+            "in": "query",
+            "name": "documentId",
+            "required": false,
+            "type": "string",
+            "default": "latest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GET successful"
+          }
+        }
       }
     }
   }
