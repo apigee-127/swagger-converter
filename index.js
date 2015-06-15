@@ -206,16 +206,19 @@ function processDataType(field, fixRef) {
   }
 
   if (field.minimum) {
-    field.minimum = fixValueType(field.minimum);
+    field.minimum = fixNonStringValue(field.minimum);
   }
 
   if (field.maximum) {
-    field.maximum = fixValueType(field.maximum);
+    field.maximum = fixNonStringValue(field.maximum);
   }
 
   if (field.defaultValue) {
-    field.default = fixValueType(field.defaultValue);
+    field.default = field.defaultValue;
     delete field.defaultValue;
+    if (field.type && field.type !== 'string') {
+      field.default = fixNonStringValue(field.default);
+    }
   }
 
   return field;
@@ -542,7 +545,7 @@ function extend(source, destination) {
  * @param value {*} - value to convert
  * @returns {*} - transformed modles object
 */
-function fixValueType(value) {
+function fixNonStringValue(value) {
   if (typeof value !== 'string') {
     return value;
   }
