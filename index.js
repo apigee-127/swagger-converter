@@ -298,21 +298,21 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     });
   }
 
-  if (oldOperation.type && oldOperation.type !== 'void' &&
-      primitiveTypes.indexOf(oldOperation.type) === -1) {
-    operation.responses['default'] = {
-      'schema': {
-        '$ref': '#/definitions/' + oldOperation.type,
-      }
+  if (!Object.keys(operation.responses).length ||
+    (!operation.responses[200] && oldOperation.type)) {
+    operation.responses[200] = {
+      description: 'No response was specified'
     };
   }
 
-  if (!Object.keys(operation.responses).length) {
-    operation.responses = {
-      '200': {
-        description: 'No response was specified'
-      }
-    };
+  if (oldOperation.type && oldOperation.type !== 'void') {
+    var schema = buildParamType(oldOperation);
+    if (primitiveTypes.indexOf(oldOperation.type) === -1) {
+      schema = {
+        '$ref': '#/definitions/' + oldOperation.type
+      };
+    }
+    operation.responses['200'].schema = schema;
   }
 
   return operation;
