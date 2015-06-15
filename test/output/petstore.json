@@ -226,7 +226,7 @@
                         "name": "petId",
                         "required": true,
                         "type": "integer",
-                        "default": -1,
+                        "default": 1,
                         "maximum": 100000,
                         "minimum": 1
                     }
@@ -755,7 +755,7 @@
                     "description": "unique identifier for the pet",
                     "minimum": 0,
                     "maximum": 100,
-                    "default": -1
+                    "default": 1
                 },
                 "category": {
                     "$ref": "#/definitions/Category"
