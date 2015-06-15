@@ -86,9 +86,12 @@ function testInput(input) {
       });
 
       it('should generate valid Swagger 2.0 document', function() {
-        SwaggerTools.specs.v2.validate(converted, function(validationErrors) {
-          expect(validationErrors).to.be.undefined;
-        });
+        function validateCallback(validationErrors, validationResults) {
+          var errors = [].concat(validationErrors || [])
+            .concat((validationResults && validationResults.errors) || []);
+          expect(errors).to.deep.equal([]);
+        }
+        SwaggerTools.specs.v2.validate(converted, validateCallback);
       });
 
       it('should produce the same output as output file', function() {

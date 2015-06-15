@@ -30,6 +30,9 @@
         "/pet": {
             "put": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    },
                     "400": {
                         "description": "Invalid ID supplied"
                     },
@@ -68,6 +71,15 @@
         "/pet/findByStatus": {
             "get": {
                 "responses": {
+                    "200": {
+                      "description": "No response was specified",
+                      "schema": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/Pet"
+                        }
+                      }
+                    },
                     "400": {
                         "description": "Invalid status value"
                     }
@@ -98,6 +110,15 @@
         "/pet/findByTags": {
             "get": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified",
+                        "schema": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/definitions/Pet"
+                          }
+                        }
+                    },
                     "400": {
                         "description": "Invalid tag value"
                     }
@@ -128,6 +149,9 @@
         "/pet/{petId}": {
             "post": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    },
                     "405": {
                         "description": "Invalid input"
                     }
@@ -170,16 +194,17 @@
             },
             "get": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified",
+                        "schema": {
+                            "$ref": "#/definitions/Pet"
+                        }
+                    },
                     "400": {
                         "description": "Invalid ID supplied"
                     },
                     "404": {
                         "description": "Pet not found"
-                    },
-                    "default": {
-                        "schema": {
-                            "$ref": "#/definitions/Pet"
-                        }
                     }
                 },
                 "description": "",
@@ -201,7 +226,7 @@
                         "name": "petId",
                         "required": true,
                         "type": "integer",
-                        "default": -1,
+                        "default": 1,
                         "maximum": 100000,
                         "minimum": 1
                     }
@@ -209,6 +234,9 @@
             },
             "delete": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    },
                     "400": {
                         "description": "Invalid pet value"
                     }
@@ -237,6 +265,15 @@
             },
             "patch": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified",
+                        "schema": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/definitions/Pet"
+                          }
+                        }
+                    },
                     "400": {
                         "description": "Invalid tag value"
                     }
@@ -332,9 +369,11 @@
                         "description": "List of user object",
                         "name": "body",
                         "required": true,
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/User"
+                        "schema": {
+                          "type": "array",
+                          "items": {
+                              "$ref": "#/definitions/User"
+                          }
                         }
                     }
                 ]
@@ -362,9 +401,11 @@
                         "description": "List of user object",
                         "name": "body",
                         "required": true,
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/User"
+                        "schema": {
+                          "type": "array",
+                          "items": {
+                              "$ref": "#/definitions/User"
+                          }
                         }
                     }
                 ]
@@ -373,6 +414,9 @@
         "/user/{username}": {
             "put": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    },
                     "400": {
                         "description": "Invalid username supplied"
                     },
@@ -410,6 +454,9 @@
             },
             "delete": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    },
                     "400": {
                         "description": "Invalid username supplied"
                     },
@@ -438,16 +485,17 @@
             },
             "get": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified",
+                        "schema": {
+                          "$ref": "#/definitions/User"
+                        }
+                    },
                     "400": {
                         "description": "Invalid username supplied"
                     },
                     "404": {
                         "description": "User not found"
-                    },
-                    "default": {
-                        "schema": {
-                            "$ref": "#/definitions/User"
-                        }
                     }
                 },
                 "description": "",
@@ -473,6 +521,12 @@
         "/user/login": {
             "get": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified",
+                        "schema": {
+                          "type": "string"
+                        }
+                    },
                     "400": {
                         "description": "Invalid username and password combination"
                     }
@@ -554,6 +608,9 @@
         "/store/order": {
             "post": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    },
                     "400": {
                         "description": "Invalid order"
                     }
@@ -583,6 +640,9 @@
         "/store/order/{orderId}": {
             "delete": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified"
+                    },
                     "400": {
                         "description": "Invalid ID supplied"
                     },
@@ -611,16 +671,17 @@
             },
             "get": {
                 "responses": {
+                    "200": {
+                        "description": "No response was specified",
+                        "schema": {
+                            "$ref": "#/definitions/Order"
+                        }
+                    },
                     "400": {
                         "description": "Invalid ID supplied"
                     },
                     "404": {
                         "description": "Order not found"
-                    },
-                    "default": {
-                        "schema": {
-                            "$ref": "#/definitions/Order"
-                        }
                     }
                 },
                 "description": "",
@@ -694,7 +755,7 @@
                     "description": "unique identifier for the pet",
                     "minimum": 0,
                     "maximum": 100,
-                    "default": -1
+                    "default": 1
                 },
                 "category": {
                     "$ref": "#/definitions/Category"

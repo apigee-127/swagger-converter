@@ -205,33 +205,16 @@ function processDataType(field, fixRef) {
     }
   }
 
-  if (field.type === 'integer') {
-    if (field.minimum) {
-      field.minimum = parseInt(field.minimum, 10);
-    }
+  if (field.minimum) {
+    field.minimum = fixValueType(field.minimum);
+  }
 
-    if (field.maximum) {
-      field.maximum = parseInt(field.maximum, 10);
-    }
-  } else {
-    if (field.minimum) {
-      field.minimum = parseFloat(field.minimum);
-    }
-
-    if (field.maximum) {
-      field.maximum = parseFloat(field.maximum);
-    }
+  if (field.maximum) {
+    field.maximum = fixValueType(field.maximum);
   }
 
   if (field.defaultValue) {
-    if (field.type === 'integer') {
-      field.default = parseInt(field.defaultValue, 10);
-    } else if (field.type === 'number') {
-      field.default = parseFloat(field.defaultValue);
-    } else {
-      field.default = field.defaultValue;
-    }
-
+    field.default = fixValueType(field.defaultValue);
     delete field.defaultValue;
   }
 
@@ -288,7 +271,7 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {
     operation.parameters = oldOperation.parameters.map(function(parameter) {
-      return buildParameter(processDataType(parameter, false));
+      return buildParameter(parameter);
     });
   }
 
@@ -298,21 +281,21 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     });
   }
 
-  if (oldOperation.type && oldOperation.type !== 'void' &&
-      primitiveTypes.indexOf(oldOperation.type) === -1) {
-    operation.responses['default'] = {
-      'schema': {
-        '$ref': '#/definitions/' + oldOperation.type,
-      }
+  if (!Object.keys(operation.responses).length ||
+    (!operation.responses[200] && oldOperation.type)) {
+    operation.responses[200] = {
+      description: 'No response was specified'
     };
   }
 
-  if (!Object.keys(operation.responses).length) {
-    operation.responses = {
-      '200': {
-        description: 'No response was specified'
-      }
-    };
+  if (oldOperation.type && oldOperation.type !== 'void') {
+    var schema = buildParamType(oldOperation);
+    if (primitiveTypes.indexOf(oldOperation.type) === -1) {
+      schema = {
+        '$ref': '#/definitions/' + oldOperation.type
+      };
+    }
+    operation.responses['200'].schema = schema;
   }
 
   return operation;
@@ -344,27 +327,13 @@ function buildParameter(oldParameter) {
     name: oldParameter.name,
     required: !!oldParameter.required
   };
-  var copyProperties = [
-    'default',
-    'maximum',
-    'minimum',
-    'items'
-  ];
 
   if (primitiveTypes.indexOf(oldParameter.type) === -1) {
     parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
+  } else if (oldParameter.paramType === 'body') {
+    parameter.schema = buildParamType(oldParameter);
   } else {
-    parameter.type = oldParameter.type.toLowerCase();
-
-    copyProperties.forEach(function(name) {
-      if (typeof oldParameter[name] !== 'undefined') {
-        parameter[name] = oldParameter[name];
-      }
-    });
-
-    if (typeof oldParameter.defaultValue !== 'undefined') {
-      parameter.default = oldParameter.defaultValue;
-    }
+    extend(parameter, buildParamType(oldParameter));
   }
 
   // form was changed to formData in Swagger 2.0
@@ -373,6 +342,37 @@ function buildParameter(oldParameter) {
   }
 
   return parameter;
+}
+
+/*
+ * Converts Swagger 1.2 type fields from parameter object into their Swagger 2.0 conterparts
+ * @param oldParameter {object} - Swagger 1.2 parameter object
+ * @returns {object} - Swagger 2.0 type fields from parameter object
+*/
+function buildParamType(oldParameter) {
+  var paramType = {};
+  var copyProperties = [
+    'default',
+    'maximum',
+    'minimum',
+    'items'
+  ];
+
+  oldParameter = processDataType(oldParameter, false);
+
+  paramType.type = oldParameter.type.toLowerCase();
+
+  copyProperties.forEach(function(name) {
+    if (typeof oldParameter[name] !== 'undefined') {
+      paramType[name] = oldParameter[name];
+    }
+  });
+
+  if (typeof oldParameter.defaultValue !== 'undefined') {
+    paramType.default = oldParameter.defaultValue;
+  }
+
+  return paramType;
 }
 
 /*
@@ -523,16 +523,33 @@ function transformAllModels(models) {
 /*
  * Extends an object with another
  * @param source {object} - object that will get extended
- * @parma distention {object} - object the will used to extend source
+ * @parma destination {object} - object the will used to extend source
 */
-function extend(source, distention) {
+function extend(source, destination) {
   if (typeof source !== 'object') {
     throw new Error('source must be objects');
   }
 
-  if (typeof distention === 'object') {
-    Object.keys(distention).forEach(function(key) {
-      source[key] = distention[key];
+  if (typeof destination === 'object') {
+    Object.keys(destination).forEach(function(key) {
+      source[key] = destination[key];
     });
+  }
+}
+
+/*
+ * Convert string values into the proper type.
+ * @param value {*} - value to convert
+ * @returns {*} - transformed modles object
+*/
+function fixValueType(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    throw Error('incorect property value: ' + e.message);
   }
 }
