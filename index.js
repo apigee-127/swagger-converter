@@ -205,33 +205,16 @@ function processDataType(field, fixRef) {
     }
   }
 
-  if (field.type === 'integer') {
-    if (field.minimum) {
-      field.minimum = parseInt(field.minimum, 10);
-    }
+  if (field.minimum) {
+    field.minimum = fixValueType(field.minimum);
+  }
 
-    if (field.maximum) {
-      field.maximum = parseInt(field.maximum, 10);
-    }
-  } else {
-    if (field.minimum) {
-      field.minimum = parseFloat(field.minimum);
-    }
-
-    if (field.maximum) {
-      field.maximum = parseFloat(field.maximum);
-    }
+  if (field.maximum) {
+    field.maximum = fixValueType(field.maximum);
   }
 
   if (field.defaultValue) {
-    if (field.type === 'integer') {
-      field.default = parseInt(field.defaultValue, 10);
-    } else if (field.type === 'number') {
-      field.default = parseFloat(field.defaultValue);
-    } else {
-      field.default = field.defaultValue;
-    }
-
+    field.default = fixValueType(field.defaultValue);
     delete field.defaultValue;
   }
 
@@ -551,5 +534,22 @@ function extend(source, destination) {
     Object.keys(destination).forEach(function(key) {
       source[key] = destination[key];
     });
+  }
+}
+
+/*
+ * Convert string values into the proper type.
+ * @param value {*} - value to convert
+ * @returns {*} - transformed modles object
+*/
+function fixValueType(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    throw Error('incorect property value: ' + e.message);
   }
 }
