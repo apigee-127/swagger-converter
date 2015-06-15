@@ -29,6 +29,26 @@
               "message": "POST successful"
             }
           ]
+        },
+        {
+          "method": "GET",
+          "summary": "GET from root",
+          "parameters": [
+            {
+              "name": "documentId",
+              "paramType": "query",
+              "description": "The document ID",
+              "required": false,
+              "type": "string",
+              "defaultValue": "latest"
+            }
+          ],
+          "responseMessages": [
+            {
+              "code": 200,
+              "message": "GET successful"
+            }
+          ]
         }
       ]
     }
