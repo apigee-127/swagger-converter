@@ -87,7 +87,8 @@ function convert(resourceListing, apiDeclarations) {
       if (result.tags) {
         result.tags.push({
           'name': api.path.replace('.{format}', '').substring(1),
-          'description': api.description});
+          'description': api.description || 'No description was specified'
+        });
       }
       if (Array.isArray(api.operations)) {
         result.paths[api.path] = buildPath(api, resourceListing);
