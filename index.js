@@ -71,9 +71,7 @@ function convert(resourceListing, apiDeclarations) {
       convertedSecurityNames);
   }
 
-  if (resourceListing.basePath) {
-    assignPathComponents(resourceListing.basePath, result);
-  }
+  extend(result, buildPathComponents(resourceListing.basePath));
 
   extend(models, resourceListing.models);
 
@@ -99,9 +97,7 @@ function convert(resourceListing, apiDeclarations) {
 
     // For each apiDeclaration if there is a basePath, assign path components
     // This might override previous assignments
-    if (apiDeclaration.basePath) {
-      assignPathComponents(apiDeclaration.basePath, result);
-    }
+    extend(result, buildPathComponents(apiDeclaration.basePath));
 
     if (!Array.isArray(apiDeclaration.apis)) { return; }
     apiDeclaration.apis.forEach(function(api) {
@@ -163,18 +159,20 @@ function buildInfo(source) {
 }
 
 /*
- * Assigns host, basePath and schemes for Swagger 2.0 result document from
+ * Get host, basePath and schemes for Swagger 2.0 result document from
  * Swagger 1.2 basePath.
  * @param basePath {string} - the base path from Swagger 1.2
- * @param result {object} - Swagger 2.0 document
 */
-function assignPathComponents(basePath, result) {
+function buildPathComponents(basePath) {
+  if (!basePath) { return {}; }
+
   var url = urlParse(basePath);
-  result.host = url.host;
-  result.basePath = url.path;
-  if (url.protocol) {
-    result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
-  }
+  return {
+    host: url.host,
+    basePath: url.path || '/',
+    //url.protocol include traling colon
+    schemes: url.protocol && [url.protocol.slice(0, -1)]
+  };
 }
 
 /*
@@ -546,7 +544,10 @@ function extend(destination, source) {
   if (!source) { return; }
 
   Object.keys(source).forEach(function(key) {
-    destination[key] = source[key];
+    var value = source[key];
+    if (value) {
+      destination[key] = value;
+    }
   });
 }
 
