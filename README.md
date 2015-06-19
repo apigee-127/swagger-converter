@@ -1,5 +1,7 @@
 # Swagger Converter
 
+[![Join the chat at https://gitter.im/apigee-127/swagger-converter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/apigee-127/swagger-converter?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/apigee-127/swagger-converter.svg?branch=master)](https://travis-ci.org/apigee-127/swagger-converter)
 
 > Converts [Swagger](http://swagger.io/) documents from version **`1.2`** to version **`2.0`**
