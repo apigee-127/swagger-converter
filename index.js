@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 
+var assert = require('assert');
 var urlParse = require('url').parse;
 var clone = require('lodash.clonedeep');
 
@@ -52,9 +53,7 @@ if (typeof window === 'undefined') {
  * @returns {object} - Fully converted Swagger 2.0 document
 */
 function convert(resourceListing, apiDeclarations) {
-  if (typeof resourceListing !== 'object') {
-    throw new Error('resourceListing must be an object');
-  }
+  assert(typeof resourceListing === 'object');
   if (!Array.isArray(apiDeclarations)) {
     apiDeclarations = [];
   }
@@ -543,15 +542,12 @@ function transformAllModels(models) {
  * @parma source {object} - object the will used to extend source
 */
 function extend(destination, source) {
-  if (typeof destination !== 'object') {
-    throw new Error('destination must be objects');
-  }
+  assert(typeof destination === 'object');
+  if (!source) { return; }
 
-  if (typeof source === 'object') {
-    Object.keys(source).forEach(function(key) {
-      destination[key] = source[key];
-    });
-  }
+  Object.keys(source).forEach(function(key) {
+    destination[key] = source[key];
+  });
 }
 
 /*
