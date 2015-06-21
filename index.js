@@ -270,7 +270,9 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
   }
 
   if (produces) { operation.produces = produces; }
+  if (oldOperation.produces) { operation.produces = oldOperation.produces; }
   if (consumes) { operation.consumes = consumes; }
+  if (oldOperation.consumes) { operation.consumes = oldOperation.consumes; }
 
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {
