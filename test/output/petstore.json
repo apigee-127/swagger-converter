@@ -168,6 +168,9 @@
                     "text/plain",
                     "text/html"
                 ],
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
                 "parameters": [
                     {
                         "in": "path",
@@ -286,9 +289,11 @@
                 ],
                 "produces": [
                     "application/json",
-                    "application/xml",
-                    "text/plain",
-                    "text/html"
+                    "application/xml"
+                ],
+                "consumes": [
+                    "application/json",
+                    "application/xml"
                 ],
                 "parameters": [
                     {
@@ -328,6 +333,9 @@
                     "application/xml",
                     "text/plain",
                     "text/html"
+                ],
+                "consumes": [
+                    "multipart/form-data"
                 ],
                 "parameters": [
                     {
