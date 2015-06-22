@@ -561,6 +561,19 @@ function fixNonStringValue(value) {
     return value;
   }
 
+  if (value === '') {
+    return undefined;
+  }
+
+  var lcValue = value.toLowerCase();
+
+  if (lcValue === 'true') {
+    return true;
+  }
+  if (lcValue === 'false') {
+    return false;
+  }
+
   try {
     return JSON.parse(value);
   } catch (e) {
