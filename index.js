@@ -26,16 +26,6 @@ var assert = require('assert');
 var urlParse = require('url').parse;
 var clone = require('lodash.clonedeep');
 
-var primitiveTypes = [
-  'string',
-  'number',
-  'boolean',
-  'integer',
-  'array',
-  'void',
-  'File'
-];
-
 if (typeof window === 'undefined') {
   module.exports = convert;
 } else {
@@ -175,6 +165,35 @@ function buildPathComponents(basePath) {
   };
 }
 
+function buildTypeProperties(oldType) {
+  if (!oldType) { return {}; }
+
+  //TODO: handle list[<TYPE>] types.
+  //if () {
+  //  return {type: 'array', 'items': {type: }};
+  //}
+
+  var typeMap = {
+    integer:  {type: 'integer'},
+    number:   {type: 'number'},
+    string:   {type: 'string'},
+    boolean:  {type: 'boolean'},
+    array:    {type: 'array'},
+    file:     {type: 'file'},
+    int:      {type: 'integer', format: 'int32'},
+    long:     {type: 'integer', format: 'int64'},
+    float:    {type: 'number',  format: 'float'},
+    double:   {type: 'double',  format: 'double'},
+    byte:     {type: 'string',  format: 'byte'},
+    date:     {type: 'string',  format: 'date'},
+    datetime: {type: 'string',  format: 'date-time'},
+    list:     {type: 'array'},
+    void:     {}
+  };
+
+  return typeMap[oldType.toLowerCase()] || {$ref: oldType};
+}
+
 /*
  * Process a data type object.
  *
@@ -185,44 +204,46 @@ function buildPathComponents(basePath) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-function processDataType(field) {
-  field = clone(field);
+function buildDataType(oldDataType) {
+  if (!oldDataType) { return; }
+  assert(typeof oldDataType === 'object');
+
+  var result = buildTypeProperties(
+    oldDataType.type || oldDataType.dataType || oldDataType.responseClass
+  );
+
+  //TODO: handle '0' in default
+  var defaultValue = oldDataType.default || oldDataType.defaultValue;
+  if (result.type !== 'string') {
+    defaultValue = fixNonStringValue(defaultValue);
+  }
+
+  //TODO: support 'allowableValues' from 1.1 spec
+
+  var items;
+  if (result.type === 'array') {
+    items = buildDataType(oldDataType.items) || {type: 'object'};
+  }
+
+  extend(result, {
+    format: oldDataType.format,
+    items: items,
+    uniqueItems: fixNonStringValue(oldDataType.uniqueItems),
+    minimum: fixNonStringValue(oldDataType.minimum),
+    maximum: fixNonStringValue(oldDataType.maximum),
+    default: defaultValue,
+    enum: oldDataType.enum,
+    $ref: oldDataType.$ref,
+  });
 
   // Checking for the existence of '#/definitions/' is related to this bug:
   //   https://github.com/apigee-127/swagger-converter/issues/6
-  if (field.$ref && field.$ref.indexOf('#/definitions/') === -1) {
-    field.$ref = '#/definitions/' + field.$ref;
-  } else if (field.items && field.items.$ref &&
-             field.items.$ref.indexOf('#/definitions/') === -1) {
-    field.items.$ref = '#/definitions/' + field.items.$ref;
+  if (isValue(result.$ref) && result.$ref.indexOf('#/definitions/') === -1) {
+    //TODO: better resolution based on 'id' field.
+    result.$ref = '#/definitions/' + result.$ref;
   }
 
-  if (field.type) {
-    if (primitiveTypes.indexOf(field.type) === -1) {
-      field = {$ref: '#/definitions/' + field.type};
-    }
-    else {
-      field.type = field.type.toLowerCase();
-    }
-  }
-
-  if (field.minimum) {
-    field.minimum = fixNonStringValue(field.minimum);
-  }
-
-  if (field.maximum) {
-    field.maximum = fixNonStringValue(field.maximum);
-  }
-
-  if (isValue(field.defaultValue)) {
-    field.default = field.defaultValue;
-    delete field.defaultValue;
-    if (field.type && field.type !== 'string') {
-      field.default = fixNonStringValue(field.default);
-    }
-  }
-
-  return field;
+  return (Object.keys(result).length !== 0) ? result : undefined;
 }
 
 /*
@@ -298,15 +319,17 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     });
   }
 
+  var schema = buildDataType(oldOperation);
+
   if (!Object.keys(operation.responses).length ||
-    (!operation.responses[200] && oldOperation.type)) {
-    operation.responses[200] = {
+      !isValue(operation.responses['200'])) {
+    operation.responses['200'] = {
       description: 'No response was specified'
     };
   }
 
-  if (oldOperation.type && oldOperation.type !== 'void') {
-    operation.responses['200'].schema = buildParamType(oldOperation);
+  if (isValue(schema)) {
+    operation.responses['200'].schema = schema;
   }
 
   return operation;
@@ -339,7 +362,7 @@ function buildParameter(oldParameter) {
     required: !!oldParameter.required
   };
 
-  var schema = buildParamType(oldParameter);
+  var schema = buildDataType(oldParameter);
   if (schema.$ref || oldParameter.paramType === 'body') {
     parameter.schema = schema;
   } else {
@@ -352,33 +375,6 @@ function buildParameter(oldParameter) {
   }
 
   return parameter;
-}
-
-/*
- * Converts Swagger 1.2 type fields from parameter object into their Swagger 2.0 conterparts
- * @param oldParameter {object} - Swagger 1.2 parameter object
- * @returns {object} - Swagger 2.0 type fields from parameter object
-*/
-function buildParamType(oldParameter) {
-  var paramType = {};
-  var copyProperties = [
-    'type',
-    'default',
-    'maximum',
-    'minimum',
-    'items',
-    '$ref'
-  ];
-
-  oldParameter = processDataType(oldParameter);
-
-  copyProperties.forEach(function(name) {
-    if (typeof oldParameter[name] !== 'undefined') {
-      paramType[name] = oldParameter[name];
-    }
-  });
-
-  return paramType;
 }
 
 /*
@@ -473,8 +469,11 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
 function transformModel(model) {
   if (typeof model.properties === 'object') {
     Object.keys(model.properties).forEach(function(propertieName) {
-      model.properties[propertieName] =
-        processDataType(model.properties[propertieName]);
+      var oldPropertie = model.properties[propertieName];
+      model.properties[propertieName] = extend(
+        buildDataType(oldPropertie),
+        {description: oldPropertie.description}
+      );
     });
   }
 }
@@ -541,6 +540,7 @@ function extend(destination, source) {
       destination[key] = value;
     }
   });
+  return destination;
 }
 
 /*

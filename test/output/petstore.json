@@ -102,7 +102,12 @@
                         "description": "Status values that need to be considered for filter",
                         "name": "status",
                         "required": true,
-                        "type": "string"
+                        "type": "string",
+                        "enum": [
+                          "available",
+                          "pending",
+                          "sold"
+                        ]
                     }
                 ]
             }
@@ -229,6 +234,7 @@
                         "name": "petId",
                         "required": true,
                         "type": "integer",
+                        "format": "int64",
                         "default": 1,
                         "maximum": 100000,
                         "minimum": 1
