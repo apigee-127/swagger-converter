@@ -211,7 +211,7 @@ function processDataType(field, fixRef) {
     field.maximum = fixNonStringValue(field.maximum);
   }
 
-  if (field.defaultValue) {
+  if (isValue(field.defaultValue)) {
     field.default = field.defaultValue;
     delete field.defaultValue;
     if (field.type && field.type !== 'string') {
@@ -545,10 +545,19 @@ function extend(destination, source) {
 
   Object.keys(source).forEach(function(key) {
     var value = source[key];
-    if (value) {
+    if (isValue(value)) {
       destination[key] = value;
     }
   });
+}
+
+/*
+ * Test if value isn't null or undefined
+ * @param value {*} - value to test
+ * @returns {boolean} - result of test
+*/
+function isValue(value) {
+  return (value !== undefined && value !== null);
 }
 
 /*
