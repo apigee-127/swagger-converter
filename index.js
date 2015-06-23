@@ -185,7 +185,7 @@ function buildPathComponents(basePath) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-function processDataType(field, fixRef) {
+function processDataType(field) {
   field = clone(field);
 
   // Checking for the existence of '#/definitions/' is related to this bug:
@@ -197,9 +197,12 @@ function processDataType(field, fixRef) {
     field.items.$ref = '#/definitions/' + field.items.$ref;
   }
 
-  if (fixRef) {
-    if (field.type && primitiveTypes.indexOf(field.type) === -1) {
+  if (field.type) {
+    if (primitiveTypes.indexOf(field.type) === -1) {
       field = {$ref: '#/definitions/' + field.type};
+    }
+    else {
+      field.type = field.type.toLowerCase();
     }
   }
 
@@ -303,13 +306,7 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
   }
 
   if (oldOperation.type && oldOperation.type !== 'void') {
-    var schema = buildParamType(oldOperation);
-    if (primitiveTypes.indexOf(oldOperation.type) === -1) {
-      schema = {
-        '$ref': '#/definitions/' + oldOperation.type
-      };
-    }
-    operation.responses['200'].schema = schema;
+    operation.responses['200'].schema = buildParamType(oldOperation);
   }
 
   return operation;
@@ -342,12 +339,11 @@ function buildParameter(oldParameter) {
     required: !!oldParameter.required
   };
 
-  if (primitiveTypes.indexOf(oldParameter.type) === -1) {
-    parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
-  } else if (oldParameter.paramType === 'body') {
-    parameter.schema = buildParamType(oldParameter);
+  var schema = buildParamType(oldParameter);
+  if (schema.$ref || oldParameter.paramType === 'body') {
+    parameter.schema = schema;
   } else {
-    extend(parameter, buildParamType(oldParameter));
+    extend(parameter, schema);
   }
 
   // form was changed to formData in Swagger 2.0
@@ -366,25 +362,21 @@ function buildParameter(oldParameter) {
 function buildParamType(oldParameter) {
   var paramType = {};
   var copyProperties = [
+    'type',
     'default',
     'maximum',
     'minimum',
-    'items'
+    'items',
+    '$ref'
   ];
 
-  oldParameter = processDataType(oldParameter, false);
-
-  paramType.type = oldParameter.type.toLowerCase();
+  oldParameter = processDataType(oldParameter);
 
   copyProperties.forEach(function(name) {
     if (typeof oldParameter[name] !== 'undefined') {
       paramType[name] = oldParameter[name];
     }
   });
-
-  if (typeof oldParameter.defaultValue !== 'undefined') {
-    paramType.default = oldParameter.defaultValue;
-  }
 
   return paramType;
 }
@@ -482,7 +474,7 @@ function transformModel(model) {
   if (typeof model.properties === 'object') {
     Object.keys(model.properties).forEach(function(propertieName) {
       model.properties[propertieName] =
-        processDataType(model.properties[propertieName], true);
+        processDataType(model.properties[propertieName]);
     });
   }
 }
