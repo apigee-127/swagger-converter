@@ -269,10 +269,21 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     operation.operationId = oldOperation.nickname;
   }
 
-  if (produces) { operation.produces = produces; }
-  if (Array.isArray(oldOperation.produces)) { operation.produces = oldOperation.produces; }
-  if (consumes) { operation.consumes = consumes; }
-  if (Array.isArray(oldOperation.consumes)) { operation.consumes = oldOperation.consumes; }
+  if (produces) {
+    operation.produces = produces;
+  }
+
+  if (Array.isArray(oldOperation.produces)) {
+    operation.produces = oldOperation.produces;
+  }
+
+  if (consumes) {
+    operation.consumes = consumes;
+  }
+
+  if (Array.isArray(oldOperation.consumes)) {
+    operation.consumes = oldOperation.consumes;
+  }
 
   if (Array.isArray(oldOperation.parameters) &&
       oldOperation.parameters.length) {
