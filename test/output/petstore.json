@@ -102,12 +102,15 @@
                         "description": "Status values that need to be considered for filter",
                         "name": "status",
                         "required": true,
-                        "type": "string",
-                        "enum": [
-                          "available",
-                          "pending",
-                          "sold"
-                        ]
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                              "available",
+                              "pending",
+                              "sold"
+                            ]
+                        }
                     }
                 ]
             }
@@ -146,7 +149,10 @@
                         "description": "Tags to filter by",
                         "name": "tags",
                         "required": true,
-                        "type": "string"
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 ]
             }

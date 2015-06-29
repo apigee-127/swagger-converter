@@ -165,13 +165,17 @@ function buildPathComponents(basePath) {
   };
 }
 
+/*
+ * Builds a Swagger 2.0 type properites from a Swagger 1.2 type properties
+ *
+ * @param oldDataType {object} - Swagger 1.2 type object
+ *
+ * @returns {object} - Swagger 2.0 equivalent
+ */
 function buildTypeProperties(oldType) {
   if (!oldType) { return {}; }
 
-  //TODO: handle list[<TYPE>] types.
-  //if () {
-  //  return {type: 'array', 'items': {type: }};
-  //}
+  //TODO: handle list[<TYPE>] types from 1.1 spec
 
   var typeMap = {
     integer:  {type: 'integer'},
@@ -195,12 +199,12 @@ function buildTypeProperties(oldType) {
 }
 
 /*
- * Process a data type object.
+ * Builds a Swagger 2.0 data type properites from a Swagger 1.2 data type properties
  *
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
  *  1.2.md#433-data-type-fields}
  *
- * @param field {object} - A data type field
+ * @param oldDataType {object} - Swagger 1.2 data type object
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
@@ -355,23 +359,29 @@ function buildResponse(oldResponse) {
  * @returns {object} - Swagger 2.0 parameter object
 */
 function buildParameter(oldParameter) {
-  var parameter = {
+  var parameter = extend({}, {
     in: oldParameter.paramType,
     description: oldParameter.description,
     name: oldParameter.name,
-    required: !!oldParameter.required
-  };
-
-  var schema = buildDataType(oldParameter);
-  if (schema.$ref || oldParameter.paramType === 'body') {
-    parameter.schema = schema;
-  } else {
-    extend(parameter, schema);
-  }
+    required: fixNonStringValue(oldParameter.required)
+  });
 
   // form was changed to formData in Swagger 2.0
   if (parameter.in === 'form') {
     parameter.in = 'formData';
+  }
+
+  var schema = buildDataType(oldParameter);
+  var allowMultiple = fixNonStringValue(oldParameter.allowMultiple);
+  if (allowMultiple === true) {
+    extend(parameter, {
+      type: 'array',
+      items: schema
+    });
+  } else if (oldParameter.paramType === 'body') {
+    parameter.schema = schema;
+  } else {
+    extend(parameter, schema);
   }
 
   return parameter;
