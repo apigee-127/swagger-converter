@@ -835,9 +835,6 @@
         "Cat": {
             "allOf": [
                 {
-                    "$ref": "#/definitions/Animal"
-                },
-                {
                     "required": [
                         "likesMilk"
                     ],
@@ -846,6 +843,9 @@
                             "type": "boolean"
                         }
                     }
+                },
+                {
+                    "$ref": "#/definitions/Animal"
                 }
             ]
         },

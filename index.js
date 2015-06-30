@@ -24,7 +24,6 @@
 
 var assert = require('assert');
 var urlParse = require('url').parse;
-var clone = require('lodash.clonedeep');
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -49,7 +48,7 @@ function convert(resourceListing, apiDeclarations) {
   }
 
   var convertedSecurityNames = {};
-  var models = {};
+  var definitions = {};
   var result = {
     swagger: '2.0',
     info: buildInfo(resourceListing),
@@ -63,7 +62,7 @@ function convert(resourceListing, apiDeclarations) {
 
   extend(result, buildPathComponents(resourceListing.basePath));
 
-  extend(models, resourceListing.models);
+  extend(definitions, buildDefinitions(resourceListing.models));
 
   // Handle embedded documents
   if (Array.isArray(resourceListing.apis)) {
@@ -94,13 +93,11 @@ function convert(resourceListing, apiDeclarations) {
       result.paths[api.path] = buildPath(api, apiDeclaration);
 
     });
-    if (apiDeclaration.models && Object.keys(apiDeclaration.models).length) {
-      extend(models, transformAllModels(apiDeclaration.models));
-    }
+    extend(definitions, buildDefinitions(apiDeclaration.models));
   });
 
-  if (Object.keys(models).length) {
-    result.definitions = transformAllModels(models);
+  if (Object.keys(definitions).length) {
+    result.definitions = definitions;
   }
 
   return result;
@@ -473,66 +470,87 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
 }
 
 /*
- * Transforms a Swagger 1.2 model object to a Swagger 2.0 model object
- * @param model {object} - (mutable) Swagger 1.2 model object
+ * Convertes a Swagger 1.2 model object to a Swagger 2.0 model object
+ * @param model {object} - Swagger 1.2 model object
+ * @returns {object} - Swagger 2.0 model object
 */
-function transformModel(model) {
-  if (typeof model.properties === 'object') {
-    Object.keys(model.properties).forEach(function(propertieName) {
-      var oldPropertie = model.properties[propertieName];
-      model.properties[propertieName] = extend(
-        buildDataType(oldPropertie),
-        {description: oldPropertie.description}
+function buildModel(oldModel) {
+  if (typeof oldModel !== 'object') {
+    throw new Error('model must be object');
+  }
+
+  var required = [];
+  var properties = {};
+  var oldProperties = oldModel.properties;
+
+  if (isValue(oldProperties)) {
+    Object.keys(oldProperties).forEach(function(propertyName) {
+      var oldProperty = oldProperties[propertyName];
+
+      if (fixNonStringValue(oldProperty.required) === true) {
+        required.push(propertyName);
+      }
+
+      properties[propertyName] = extend(
+        buildDataType(oldProperty),
+        {description: oldProperty.description}
       );
     });
   }
+
+  required = oldModel.required || required;
+  if (required.length === 0) {
+    required = undefined;
+  }
+
+  return extend({}, {
+    description: oldModel.description,
+    required: required,
+    properties: properties,
+    discriminator: oldModel.discriminator
+  });
 }
 
 /*
- * Transfers the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
+ * Convertes the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
  * object
- * @param models {object} - (mutable) an object containing Swagger 1.2 objects
- * @returns {object} - transformed modles object
+ * @param oldModels {object} - an object containing Swagger 1.2 objects
+ * @returns {object} - Swagger 2.0 definitions object
 */
-function transformAllModels(models) {
-  var modelsClone = clone(models);
+function buildDefinitions(oldModels) {
+  if (!isValue(oldModels)) { return {}; }
 
-  if (typeof models !== 'object') {
+  if (typeof oldModels !== 'object') {
     throw new Error('models must be object');
   }
 
-  var hierarchy = {};
+  var models = {};
 
-  Object.keys(modelsClone).forEach(function(modelId) {
-    var model = modelsClone[modelId];
-    delete model['id'];
-
-    transformModel(model);
-
-    if (model.subTypes) {
-      hierarchy[modelId] = model.subTypes;
-
-      delete model.subTypes;
-    }
+  Object.keys(oldModels).forEach(function(modelId) {
+    models[modelId] = buildModel(oldModels[modelId]);
   });
 
-  Object.keys(hierarchy).forEach(function(parent) {
-    hierarchy[parent].forEach(function(childId) {
-      var childModel = modelsClone[childId];
+  Object.keys(oldModels).forEach(function(parentId) {
+    var subTypes = oldModels[parentId].subTypes;
 
-      if (childModel) {
-        var allOf = (childModel.allOf || []).concat({
-          $ref: '#/definitions/' + parent
-        }).concat(clone(childModel));
-        for (var member in childModel) {
-          delete childModel[member];
-        }
-        childModel.allOf = allOf;
+    if (!isValue(subTypes)) { return; }
+
+    subTypes.forEach(function(childId) {
+      var child = models[childId];
+
+      if (!isValue(child)) {
+        throw new Error('');
       }
+
+      if (!isValue(child.allOf)) {
+        models[childId] = child = {allOf: [child]};
+      }
+
+      child.allOf.push({$ref: '#/definitions/' + parentId});
     });
   });
 
-  return modelsClone;
+  return models;
 }
 
 /*
