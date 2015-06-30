@@ -256,10 +256,20 @@ function buildDataType(oldDataType) {
 function buildPath(api, apiDeclaration) {
   var path = {};
 
+  var tags;
+  if (isValue(apiDeclaration.resourcePath)) {
+    tags = [apiDeclaration.resourcePath.substr(1)];
+  }
+
+  var operationProperties = {
+    produces: apiDeclaration.produces,
+    consumes: apiDeclaration.consumes,
+    tags: tags
+  };
+
   api.operations.forEach(function(oldOperation) {
     var method = oldOperation.method.toLowerCase();
-    path[method] = buildOperation(oldOperation, apiDeclaration.produces,
-      apiDeclaration.consumes, apiDeclaration.resourcePath);
+    path[method] = buildOperation(oldOperation, operationProperties);
   });
 
   return path;
@@ -268,86 +278,55 @@ function buildPath(api, apiDeclaration) {
 /*
  * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
  * @param oldOperation {object} - Swagger 1.2 operation object
- * @param produces {array} - from containing apiDeclaration
- * @param consumes {array} - from containing apiDeclaration
+ * @param declarationDefaults {object} - defaults from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
-function buildOperation(oldOperation, produces, consumes, resourcePath) {
-  var operation = {
-    responses: {},
-    description: oldOperation.description || ''
-  };
+function buildOperation(oldOperation, declarationDefaults) {
+  var oldParameters = oldOperation.parameters;
+  var parameters;
 
-  if (resourcePath) {
-    operation.tags = [];
-    operation.tags.push(resourcePath.substr(1));
+  if (Array.isArray(oldParameters) && oldParameters.length) {
+    parameters = oldParameters.map(buildParameter);
   }
 
-  if (oldOperation.summary) {
-    operation.summary = oldOperation.summary;
-  }
-
-  if (oldOperation.nickname) {
-    operation.operationId = oldOperation.nickname;
-  }
-
-  if (produces) {
-    operation.produces = produces;
-  }
-
-  if (Array.isArray(oldOperation.produces)) {
-    operation.produces = oldOperation.produces;
-  }
-
-  if (consumes) {
-    operation.consumes = consumes;
-  }
-
-  if (Array.isArray(oldOperation.consumes)) {
-    operation.consumes = oldOperation.consumes;
-  }
-
-  if (Array.isArray(oldOperation.parameters) &&
-      oldOperation.parameters.length) {
-    operation.parameters = oldOperation.parameters.map(function(parameter) {
-      return buildParameter(parameter);
-    });
-  }
-
-  if (Array.isArray(oldOperation.responseMessages)) {
-    oldOperation.responseMessages.forEach(function(oldResponse) {
-      operation.responses[oldResponse.code] = buildResponse(oldResponse);
-    });
-  }
-
-  var schema = buildDataType(oldOperation);
-
-  if (!Object.keys(operation.responses).length ||
-      !isValue(operation.responses['200'])) {
-    operation.responses['200'] = {
-      description: 'No response was specified'
-    };
-  }
-
-  if (isValue(schema)) {
-    operation.responses['200'].schema = schema;
-  }
-
-  return operation;
+  //TODO: process Swagger 1.2 'authorizations'
+  return extend({}, declarationDefaults, {
+    operationId: oldOperation.nickname,
+    summary: oldOperation.summary,
+    description: oldOperation.description || oldOperation.notes,
+    deprecated: fixNonStringValue(oldOperation.deprecated),
+    produces: oldOperation.produces,
+    consumes: oldOperation.consumes,
+    parameters: parameters,
+    responses: buildResponses(oldOperation)
+  });
 }
 
 /*
- * Builds a Swagger 2.0 response object form a Swagger 1.2 response object
- * @param oldResponse {object} - Swagger 1.2 response object
+ * Builds a Swagger 2.0 responses object form a Swagger 1.2 responseMessages object
+ * @param oldOperation {object} - Swagger 1.2 operation object
  * @returns {object} - Swagger 2.0 response object
 */
-function buildResponse(oldResponse) {
-  var response = {};
+function buildResponses(oldOperation) {
+  var oldResponses = oldOperation.responseMessages;
+  var responses = {
+    '200': {description: 'No response was specified'}
+  };
 
-  // TODO: Confirm this is correct
-  response.description = oldResponse.message;
+  if (Array.isArray(oldResponses)) {
+    oldResponses.forEach(function(oldResponse) {
+      //TODO: process Swagger 1.2 'responseModel'
+      responses['' + oldResponse.code] = extend({}, {
+        description: oldResponse.message,
+      });
+    });
+  }
 
-  return response;
+  extend(responses['200'], {
+    schema: buildDataType(oldOperation)
+  });
+
+  return responses;
 }
 
 /*
@@ -558,16 +537,22 @@ function buildDefinitions(oldModels) {
  * @param destination {object} - object that will get extended
  * @parma source {object} - object the will used to extend source
 */
-function extend(destination, source) {
+function extend(destination) {
   assert(typeof destination === 'object');
-  if (!source) { return; }
 
-  Object.keys(source).forEach(function(key) {
-    var value = source[key];
-    if (isValue(value)) {
-      destination[key] = value;
-    }
-  });
+  function assign(source) {
+    if (!source) { return; }
+    Object.keys(source).forEach(function(key) {
+      var value = source[key];
+      if (isValue(value)) {
+        destination[key] = value;
+      }
+    });
+  }
+
+  for (var i = 1; i < arguments.length; ++i) {
+    assign(arguments[i]);
+  }
   return destination;
 }
 

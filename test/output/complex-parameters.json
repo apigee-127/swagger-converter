@@ -7,7 +7,6 @@
   "paths": {
     "/": {
       "post": {
-        "description": "",
         "summary": "POST to root",
         "parameters": [
           {
@@ -30,7 +29,6 @@
         }
       },
       "get": {
-        "description": "",
         "summary": "GET from root",
         "parameters": [
           {
