@@ -60,47 +60,62 @@ function convert(resourceListing, apiDeclarations) {
       convertedSecurityNames);
   }
 
-  extend(result, buildPathComponents(resourceListing.basePath));
+  var tagDescriptions = {};
+  resourceListing.apis.forEach(function(resource) {
+    var tagName = extractTag(resource.path);
+    if (!isValue(tagName)) { return; }
 
-  extend(definitions, buildDefinitions(resourceListing.models));
+    tagDescriptions[tagName] = resource.description;
+  });
 
   // Handle embedded documents
-  if (Array.isArray(resourceListing.apis)) {
-    if (apiDeclarations.length > 0) {
-      result.tags = [];
-    }
-    resourceListing.apis.forEach(function(api) {
-      if (result.tags) {
-        result.tags.push({
-          'name': api.path.replace('.{format}', '').substring(1),
-          'description': api.description || 'No description was specified'
-        });
-      }
-      if (Array.isArray(api.operations)) {
-        result.paths[api.path] = buildPath(api, resourceListing);
-      }
-    });
-  }
+  var resources = [resourceListing].concat(apiDeclarations);
 
-  apiDeclarations.forEach(function(apiDeclaration) {
+  resources.forEach(function(resource) {
+    var operationTags;
+    var tagName = extractTag(resource.resourcePath);
+
+    if (isValue(tagName)) {
+      result.tags = result.tags || [];
+      result.tags.push(extend({}, {
+        name: tagName,
+        description: tagDescriptions[tagName]
+      }));
+      operationTags = [tagName];
+    }
+
+    extend(definitions, buildDefinitions(resource.models));
+    extend(result.paths, buildPaths(resource, operationTags));
 
     // For each apiDeclaration if there is a basePath, assign path components
     // This might override previous assignments
-    extend(result, buildPathComponents(apiDeclaration.basePath));
-
-    if (!Array.isArray(apiDeclaration.apis)) { return; }
-    apiDeclaration.apis.forEach(function(api) {
-      result.paths[api.path] = buildPath(api, apiDeclaration);
-
-    });
-    extend(definitions, buildDefinitions(apiDeclaration.models));
+    extend(result, buildPathComponents(resource.basePath));
   });
 
   if (Object.keys(definitions).length) {
     result.definitions = definitions;
   }
-
   return result;
+}
+
+/*
+ * Extract name of the tag from resourcePath
+ * @param resourcePath {string} - Swagger 1.2 resource path
+ * @returns {string} - tag name
+*/
+function extractTag(resourcePath) {
+  if (!isValue(resourcePath)) { return; }
+
+  var path = urlParse(resourcePath).path;
+  if (!isValue(path)) { return; }
+
+  path = path.replace(/\/$/, '');
+  path = path.replace('{format}', 'json');
+  path = path.replace(/.json$/, '');
+  path = path.split(['/']).pop();
+
+  if (path === '') { return; }
+  return path;
 }
 
 /*
@@ -248,18 +263,13 @@ function buildDataType(oldDataType) {
 }
 
 /*
- * Builds a Swagger 2.0 path object form a Swagger 1.2 path object
- * @param api {object} - Swagger 1.2 path object
- * @param apiDeclaration {object} - parent apiDeclaration
+ * Builds a Swagger 2.0 paths object form a Swagger 1.2 path object
+ * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
+ * @param tag {array} - array of Swagger 2.0 tag names
  * @returns {object} - Swagger 2.0 path object
 */
-function buildPath(api, apiDeclaration) {
-  var path = {};
-
-  var tags;
-  if (isValue(apiDeclaration.resourcePath)) {
-    tags = [apiDeclaration.resourcePath.substr(1)];
-  }
+function buildPaths(apiDeclaration, tags) {
+  var paths = {};
 
   var operationProperties = {
     produces: apiDeclaration.produces,
@@ -267,12 +277,20 @@ function buildPath(api, apiDeclaration) {
     tags: tags
   };
 
-  api.operations.forEach(function(oldOperation) {
-    var method = oldOperation.method.toLowerCase();
-    path[method] = buildOperation(oldOperation, operationProperties);
+  apiDeclaration.apis.forEach(function(api) {
+    if (!isValue(api.operations)) { return; }
+
+    var pathString = api.path.replace('{format}', 'json');
+    var path = paths[pathString] = {};
+
+    api.operations.forEach(function(oldOperation) {
+      var method = oldOperation.method || oldOperation.httpMethod;
+      method = method.toLowerCase();
+      path[method] = buildOperation(oldOperation, operationProperties);
+    });
   });
 
-  return path;
+  return paths;
 }
 
 /*
