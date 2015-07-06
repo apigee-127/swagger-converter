@@ -22,18 +22,8 @@
  * THE SOFTWARE.
  */
 
+var assert = require('assert');
 var urlParse = require('url').parse;
-var clone = require('lodash.clonedeep');
-
-var primitiveTypes = [
-  'string',
-  'number',
-  'boolean',
-  'integer',
-  'array',
-  'void',
-  'File'
-];
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -52,15 +42,13 @@ if (typeof window === 'undefined') {
  * @returns {object} - Fully converted Swagger 2.0 document
 */
 function convert(resourceListing, apiDeclarations) {
-  if (typeof resourceListing !== 'object') {
-    throw new Error('resourceListing must be an object');
-  }
+  assert(typeof resourceListing === 'object');
   if (!Array.isArray(apiDeclarations)) {
     apiDeclarations = [];
   }
 
   var convertedSecurityNames = {};
-  var models = {};
+  var definitions = {};
   var result = {
     swagger: '2.0',
     info: buildInfo(resourceListing),
@@ -72,53 +60,62 @@ function convert(resourceListing, apiDeclarations) {
       convertedSecurityNames);
   }
 
-  if (resourceListing.basePath) {
-    assignPathComponents(resourceListing.basePath, result);
-  }
+  var tagDescriptions = {};
+  resourceListing.apis.forEach(function(resource) {
+    var tagName = extractTag(resource.path);
+    if (!isValue(tagName)) { return; }
 
-  extend(models, resourceListing.models);
+    tagDescriptions[tagName] = resource.description;
+  });
 
   // Handle embedded documents
-  if (Array.isArray(resourceListing.apis)) {
-    if (apiDeclarations.length > 0) {
-      result.tags = [];
-    }
-    resourceListing.apis.forEach(function(api) {
-      if (result.tags) {
-        result.tags.push({
-          'name': api.path.replace('.{format}', '').substring(1),
-          'description': api.description || 'No description was specified'
-        });
-      }
-      if (Array.isArray(api.operations)) {
-        result.paths[api.path] = buildPath(api, resourceListing);
-      }
-    });
-  }
+  var resources = [resourceListing].concat(apiDeclarations);
 
-  apiDeclarations.forEach(function(apiDeclaration) {
+  resources.forEach(function(resource) {
+    var operationTags;
+    var tagName = extractTag(resource.resourcePath);
+
+    if (isValue(tagName)) {
+      result.tags = result.tags || [];
+      result.tags.push(extend({}, {
+        name: tagName,
+        description: tagDescriptions[tagName]
+      }));
+      operationTags = [tagName];
+    }
+
+    extend(definitions, buildDefinitions(resource.models));
+    extend(result.paths, buildPaths(resource, operationTags));
 
     // For each apiDeclaration if there is a basePath, assign path components
     // This might override previous assignments
-    if (apiDeclaration.basePath) {
-      assignPathComponents(apiDeclaration.basePath, result);
-    }
-
-    if (!Array.isArray(apiDeclaration.apis)) { return; }
-    apiDeclaration.apis.forEach(function(api) {
-      result.paths[api.path] = buildPath(api, apiDeclaration);
-
-    });
-    if (apiDeclaration.models && Object.keys(apiDeclaration.models).length) {
-      extend(models, transformAllModels(apiDeclaration.models));
-    }
+    extend(result, buildPathComponents(resource.basePath));
   });
 
-  if (Object.keys(models).length) {
-    result.definitions = transformAllModels(models);
+  if (Object.keys(definitions).length) {
+    result.definitions = definitions;
   }
-
   return result;
+}
+
+/*
+ * Extract name of the tag from resourcePath
+ * @param resourcePath {string} - Swagger 1.2 resource path
+ * @returns {string} - tag name
+*/
+function extractTag(resourcePath) {
+  if (!isValue(resourcePath)) { return; }
+
+  var path = urlParse(resourcePath).path;
+  if (!isValue(path)) { return; }
+
+  path = path.replace(/\/$/, '');
+  path = path.replace('{format}', 'json');
+  path = path.replace(/.json$/, '');
+  path = path.split(['/']).pop();
+
+  if (path === '') { return; }
+  return path;
 }
 
 /*
@@ -164,172 +161,190 @@ function buildInfo(source) {
 }
 
 /*
- * Assigns host, basePath and schemes for Swagger 2.0 result document from
+ * Get host, basePath and schemes for Swagger 2.0 result document from
  * Swagger 1.2 basePath.
  * @param basePath {string} - the base path from Swagger 1.2
- * @param result {object} - Swagger 2.0 document
 */
-function assignPathComponents(basePath, result) {
+function buildPathComponents(basePath) {
+  if (!basePath) { return {}; }
+
   var url = urlParse(basePath);
-  result.host = url.host;
-  result.basePath = url.path;
-  if (url.protocol) {
-    result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
-  }
+  return {
+    host: url.host,
+    basePath: url.path || '/',
+    //url.protocol include traling colon
+    schemes: url.protocol && [url.protocol.slice(0, -1)]
+  };
 }
 
 /*
- * Process a data type object.
+ * Builds a Swagger 2.0 type properites from a Swagger 1.2 type properties
+ *
+ * @param oldDataType {object} - Swagger 1.2 type object
+ *
+ * @returns {object} - Swagger 2.0 equivalent
+ */
+function buildTypeProperties(oldType) {
+  if (!oldType) { return {}; }
+
+  //TODO: handle list[<TYPE>] types from 1.1 spec
+
+  var typeMap = {
+    integer:  {type: 'integer'},
+    number:   {type: 'number'},
+    string:   {type: 'string'},
+    boolean:  {type: 'boolean'},
+    array:    {type: 'array'},
+    file:     {type: 'file'},
+    int:      {type: 'integer', format: 'int32'},
+    long:     {type: 'integer', format: 'int64'},
+    float:    {type: 'number',  format: 'float'},
+    double:   {type: 'double',  format: 'double'},
+    byte:     {type: 'string',  format: 'byte'},
+    date:     {type: 'string',  format: 'date'},
+    datetime: {type: 'string',  format: 'date-time'},
+    list:     {type: 'array'},
+    void:     {}
+  };
+
+  return typeMap[oldType.toLowerCase()] || {$ref: oldType};
+}
+
+/*
+ * Builds a Swagger 2.0 data type properites from a Swagger 1.2 data type properties
  *
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
  *  1.2.md#433-data-type-fields}
  *
- * @param field {object} - A data type field
+ * @param oldDataType {object} - Swagger 1.2 data type object
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-function processDataType(field, fixRef) {
-  field = clone(field);
+function buildDataType(oldDataType) {
+  if (!oldDataType) { return; }
+  assert(typeof oldDataType === 'object');
+
+  var result = buildTypeProperties(
+    oldDataType.type || oldDataType.dataType || oldDataType.responseClass
+  );
+
+  //TODO: handle '0' in default
+  var defaultValue = oldDataType.default || oldDataType.defaultValue;
+  if (result.type !== 'string') {
+    defaultValue = fixNonStringValue(defaultValue);
+  }
+
+  //TODO: support 'allowableValues' from 1.1 spec
+
+  var items;
+  if (result.type === 'array') {
+    items = buildDataType(oldDataType.items) || {type: 'object'};
+  }
+
+  extend(result, {
+    format: oldDataType.format,
+    items: items,
+    uniqueItems: fixNonStringValue(oldDataType.uniqueItems),
+    minimum: fixNonStringValue(oldDataType.minimum),
+    maximum: fixNonStringValue(oldDataType.maximum),
+    default: defaultValue,
+    enum: oldDataType.enum,
+    $ref: oldDataType.$ref,
+  });
 
   // Checking for the existence of '#/definitions/' is related to this bug:
   //   https://github.com/apigee-127/swagger-converter/issues/6
-  if (field.$ref && field.$ref.indexOf('#/definitions/') === -1) {
-    field.$ref = '#/definitions/' + field.$ref;
-  } else if (field.items && field.items.$ref &&
-             field.items.$ref.indexOf('#/definitions/') === -1) {
-    field.items.$ref = '#/definitions/' + field.items.$ref;
+  if (isValue(result.$ref) && result.$ref.indexOf('#/definitions/') === -1) {
+    //TODO: better resolution based on 'id' field.
+    result.$ref = '#/definitions/' + result.$ref;
   }
 
-  if (fixRef) {
-    if (field.type && primitiveTypes.indexOf(field.type) === -1) {
-      field = {$ref: '#/definitions/' + field.type};
-    }
-  }
-
-  if (field.minimum) {
-    field.minimum = fixNonStringValue(field.minimum);
-  }
-
-  if (field.maximum) {
-    field.maximum = fixNonStringValue(field.maximum);
-  }
-
-  if (field.defaultValue) {
-    field.default = field.defaultValue;
-    delete field.defaultValue;
-    if (field.type && field.type !== 'string') {
-      field.default = fixNonStringValue(field.default);
-    }
-  }
-
-  return field;
+  return (Object.keys(result).length !== 0) ? result : undefined;
 }
 
 /*
- * Builds a Swagger 2.0 path object form a Swagger 1.2 path object
- * @param api {object} - Swagger 1.2 path object
- * @param apiDeclaration {object} - parent apiDeclaration
+ * Builds a Swagger 2.0 paths object form a Swagger 1.2 path object
+ * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
+ * @param tag {array} - array of Swagger 2.0 tag names
  * @returns {object} - Swagger 2.0 path object
 */
-function buildPath(api, apiDeclaration) {
-  var path = {};
+function buildPaths(apiDeclaration, tags) {
+  var paths = {};
 
-  api.operations.forEach(function(oldOperation) {
-    var method = oldOperation.method.toLowerCase();
-    path[method] = buildOperation(oldOperation, apiDeclaration.produces,
-      apiDeclaration.consumes, apiDeclaration.resourcePath);
+  var operationProperties = {
+    produces: apiDeclaration.produces,
+    consumes: apiDeclaration.consumes,
+    tags: tags
+  };
+
+  apiDeclaration.apis.forEach(function(api) {
+    if (!isValue(api.operations)) { return; }
+
+    var pathString = api.path.replace('{format}', 'json');
+    var path = paths[pathString] = {};
+
+    api.operations.forEach(function(oldOperation) {
+      var method = oldOperation.method || oldOperation.httpMethod;
+      method = method.toLowerCase();
+      path[method] = buildOperation(oldOperation, operationProperties);
+    });
   });
 
-  return path;
+  return paths;
 }
 
 /*
  * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
  * @param oldOperation {object} - Swagger 1.2 operation object
- * @param produces {array} - from containing apiDeclaration
- * @param consumes {array} - from containing apiDeclaration
+ * @param declarationDefaults {object} - defaults from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
-function buildOperation(oldOperation, produces, consumes, resourcePath) {
-  var operation = {
-    responses: {},
-    description: oldOperation.description || ''
-  };
+function buildOperation(oldOperation, declarationDefaults) {
+  var oldParameters = oldOperation.parameters;
+  var parameters;
 
-  if (resourcePath) {
-    operation.tags = [];
-    operation.tags.push(resourcePath.substr(1));
+  if (Array.isArray(oldParameters) && oldParameters.length) {
+    parameters = oldParameters.map(buildParameter);
   }
 
-  if (oldOperation.summary) {
-    operation.summary = oldOperation.summary;
-  }
-
-  if (oldOperation.nickname) {
-    operation.operationId = oldOperation.nickname;
-  }
-
-  if (produces) {
-    operation.produces = produces;
-  }
-
-  if (Array.isArray(oldOperation.produces)) {
-    operation.produces = oldOperation.produces;
-  }
-
-  if (consumes) {
-    operation.consumes = consumes;
-  }
-
-  if (Array.isArray(oldOperation.consumes)) {
-    operation.consumes = oldOperation.consumes;
-  }
-
-  if (Array.isArray(oldOperation.parameters) &&
-      oldOperation.parameters.length) {
-    operation.parameters = oldOperation.parameters.map(function(parameter) {
-      return buildParameter(parameter);
-    });
-  }
-
-  if (Array.isArray(oldOperation.responseMessages)) {
-    oldOperation.responseMessages.forEach(function(oldResponse) {
-      operation.responses[oldResponse.code] = buildResponse(oldResponse);
-    });
-  }
-
-  if (!Object.keys(operation.responses).length ||
-    (!operation.responses[200] && oldOperation.type)) {
-    operation.responses[200] = {
-      description: 'No response was specified'
-    };
-  }
-
-  if (oldOperation.type && oldOperation.type !== 'void') {
-    var schema = buildParamType(oldOperation);
-    if (primitiveTypes.indexOf(oldOperation.type) === -1) {
-      schema = {
-        '$ref': '#/definitions/' + oldOperation.type
-      };
-    }
-    operation.responses['200'].schema = schema;
-  }
-
-  return operation;
+  //TODO: process Swagger 1.2 'authorizations'
+  return extend({}, declarationDefaults, {
+    operationId: oldOperation.nickname,
+    summary: oldOperation.summary,
+    description: oldOperation.description || oldOperation.notes,
+    deprecated: fixNonStringValue(oldOperation.deprecated),
+    produces: oldOperation.produces,
+    consumes: oldOperation.consumes,
+    parameters: parameters,
+    responses: buildResponses(oldOperation)
+  });
 }
 
 /*
- * Builds a Swagger 2.0 response object form a Swagger 1.2 response object
- * @param oldResponse {object} - Swagger 1.2 response object
+ * Builds a Swagger 2.0 responses object form a Swagger 1.2 responseMessages object
+ * @param oldOperation {object} - Swagger 1.2 operation object
  * @returns {object} - Swagger 2.0 response object
 */
-function buildResponse(oldResponse) {
-  var response = {};
+function buildResponses(oldOperation) {
+  var oldResponses = oldOperation.responseMessages;
+  var responses = {
+    '200': {description: 'No response was specified'}
+  };
 
-  // TODO: Confirm this is correct
-  response.description = oldResponse.message;
+  if (Array.isArray(oldResponses)) {
+    oldResponses.forEach(function(oldResponse) {
+      //TODO: process Swagger 1.2 'responseModel'
+      responses['' + oldResponse.code] = extend({}, {
+        description: oldResponse.message,
+      });
+    });
+  }
 
-  return response;
+  extend(responses['200'], {
+    schema: buildDataType(oldOperation)
+  });
+
+  return responses;
 }
 
 /*
@@ -338,58 +353,32 @@ function buildResponse(oldResponse) {
  * @returns {object} - Swagger 2.0 parameter object
 */
 function buildParameter(oldParameter) {
-  var parameter = {
+  var parameter = extend({}, {
     in: oldParameter.paramType,
     description: oldParameter.description,
     name: oldParameter.name,
-    required: !!oldParameter.required
-  };
-
-  if (primitiveTypes.indexOf(oldParameter.type) === -1) {
-    parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
-  } else if (oldParameter.paramType === 'body') {
-    parameter.schema = buildParamType(oldParameter);
-  } else {
-    extend(parameter, buildParamType(oldParameter));
-  }
+    required: fixNonStringValue(oldParameter.required)
+  });
 
   // form was changed to formData in Swagger 2.0
   if (parameter.in === 'form') {
     parameter.in = 'formData';
   }
 
-  return parameter;
-}
-
-/*
- * Converts Swagger 1.2 type fields from parameter object into their Swagger 2.0 conterparts
- * @param oldParameter {object} - Swagger 1.2 parameter object
- * @returns {object} - Swagger 2.0 type fields from parameter object
-*/
-function buildParamType(oldParameter) {
-  var paramType = {};
-  var copyProperties = [
-    'default',
-    'maximum',
-    'minimum',
-    'items'
-  ];
-
-  oldParameter = processDataType(oldParameter, false);
-
-  paramType.type = oldParameter.type.toLowerCase();
-
-  copyProperties.forEach(function(name) {
-    if (typeof oldParameter[name] !== 'undefined') {
-      paramType[name] = oldParameter[name];
-    }
-  });
-
-  if (typeof oldParameter.defaultValue !== 'undefined') {
-    paramType.default = oldParameter.defaultValue;
+  var schema = buildDataType(oldParameter);
+  var allowMultiple = fixNonStringValue(oldParameter.allowMultiple);
+  if (allowMultiple === true) {
+    extend(parameter, {
+      type: 'array',
+      items: schema
+    });
+  } else if (oldParameter.paramType === 'body') {
+    parameter.schema = schema;
+  } else {
+    extend(parameter, schema);
   }
 
-  return paramType;
+  return parameter;
 }
 
 /*
@@ -478,80 +467,120 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
 }
 
 /*
- * Transforms a Swagger 1.2 model object to a Swagger 2.0 model object
- * @param model {object} - (mutable) Swagger 1.2 model object
+ * Convertes a Swagger 1.2 model object to a Swagger 2.0 model object
+ * @param model {object} - Swagger 1.2 model object
+ * @returns {object} - Swagger 2.0 model object
 */
-function transformModel(model) {
-  if (typeof model.properties === 'object') {
-    Object.keys(model.properties).forEach(function(propertieName) {
-      model.properties[propertieName] =
-        processDataType(model.properties[propertieName], true);
+function buildModel(oldModel) {
+  if (typeof oldModel !== 'object') {
+    throw new Error('model must be object');
+  }
+
+  var required = [];
+  var properties = {};
+  var oldProperties = oldModel.properties;
+
+  if (isValue(oldProperties)) {
+    Object.keys(oldProperties).forEach(function(propertyName) {
+      var oldProperty = oldProperties[propertyName];
+
+      if (fixNonStringValue(oldProperty.required) === true) {
+        required.push(propertyName);
+      }
+
+      properties[propertyName] = extend(
+        buildDataType(oldProperty),
+        {description: oldProperty.description}
+      );
     });
   }
+
+  required = oldModel.required || required;
+  if (required.length === 0) {
+    required = undefined;
+  }
+
+  return extend({}, {
+    description: oldModel.description,
+    required: required,
+    properties: properties,
+    discriminator: oldModel.discriminator
+  });
 }
 
 /*
- * Transfers the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
+ * Convertes the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
  * object
- * @param models {object} - (mutable) an object containing Swagger 1.2 objects
- * @returns {object} - transformed modles object
+ * @param oldModels {object} - an object containing Swagger 1.2 objects
+ * @returns {object} - Swagger 2.0 definitions object
 */
-function transformAllModels(models) {
-  var modelsClone = clone(models);
+function buildDefinitions(oldModels) {
+  if (!isValue(oldModels)) { return {}; }
 
-  if (typeof models !== 'object') {
+  if (typeof oldModels !== 'object') {
     throw new Error('models must be object');
   }
 
-  var hierarchy = {};
+  var models = {};
 
-  Object.keys(modelsClone).forEach(function(modelId) {
-    var model = modelsClone[modelId];
-    delete model['id'];
-
-    transformModel(model);
-
-    if (model.subTypes) {
-      hierarchy[modelId] = model.subTypes;
-
-      delete model.subTypes;
-    }
+  Object.keys(oldModels).forEach(function(modelId) {
+    models[modelId] = buildModel(oldModels[modelId]);
   });
 
-  Object.keys(hierarchy).forEach(function(parent) {
-    hierarchy[parent].forEach(function(childId) {
-      var childModel = modelsClone[childId];
+  Object.keys(oldModels).forEach(function(parentId) {
+    var subTypes = oldModels[parentId].subTypes;
 
-      if (childModel) {
-        var allOf = (childModel.allOf || []).concat({
-          $ref: '#/definitions/' + parent
-        }).concat(clone(childModel));
-        for (var member in childModel) {
-          delete childModel[member];
-        }
-        childModel.allOf = allOf;
+    if (!isValue(subTypes)) { return; }
+
+    subTypes.forEach(function(childId) {
+      var child = models[childId];
+
+      if (!isValue(child)) {
+        throw new Error('');
       }
+
+      if (!isValue(child.allOf)) {
+        models[childId] = child = {allOf: [child]};
+      }
+
+      child.allOf.push({$ref: '#/definitions/' + parentId});
     });
   });
 
-  return modelsClone;
+  return models;
 }
 
 /*
  * Extends an object with another
- * @param source {object} - object that will get extended
- * @parma destination {object} - object the will used to extend source
+ * @param destination {object} - object that will get extended
+ * @parma source {object} - object the will used to extend source
 */
-function extend(source, destination) {
-  if (typeof source !== 'object') {
-    throw new Error('source must be objects');
-  }
+function extend(destination) {
+  assert(typeof destination === 'object');
 
-  if (typeof destination === 'object') {
-    Object.keys(destination).forEach(function(key) {
-      source[key] = destination[key];
+  function assign(source) {
+    if (!source) { return; }
+    Object.keys(source).forEach(function(key) {
+      var value = source[key];
+      if (isValue(value)) {
+        destination[key] = value;
+      }
     });
   }
+
+  for (var i = 1; i < arguments.length; ++i) {
+    assign(arguments[i]);
+  }
+  return destination;
+}
+
+/*
+ * Test if value isn't null or undefined
+ * @param value {*} - value to test
+ * @returns {boolean} - result of test
+*/
+function isValue(value) {
+  return (value !== undefined && value !== null);
 }
 
 /*
@@ -562,6 +591,19 @@ function extend(source, destination) {
 function fixNonStringValue(value) {
   if (typeof value !== 'string') {
     return value;
+  }
+
+  if (value === '') {
+    return undefined;
+  }
+
+  var lcValue = value.toLowerCase();
+
+  if (lcValue === 'true') {
+    return true;
+  }
+  if (lcValue === 'false') {
+    return false;
   }
 
   try {
