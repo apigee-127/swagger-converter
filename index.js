@@ -231,7 +231,7 @@ function buildDataType(oldDataType) {
   //TODO: handle '0' in default
   var defaultValue = oldDataType.default || oldDataType.defaultValue;
   if (result.type !== 'string') {
-    defaultValue = fixNonStringValue(defaultValue);
+    defaultValue = fixNonStringValue(defaultValue, true);
   }
 
   //TODO: support 'allowableValues' from 1.1 spec
@@ -595,9 +595,10 @@ function isValue(value) {
 /*
  * Convert string values into the proper type.
  * @param value {*} - value to convert
+ * @param skipError {boolean} - skip error during conversion
  * @returns {*} - transformed modles object
 */
-function fixNonStringValue(value) {
+function fixNonStringValue(value, skipError) {
   if (typeof value !== 'string') {
     return value;
   }
@@ -618,6 +619,11 @@ function fixNonStringValue(value) {
   try {
     return JSON.parse(value);
   } catch (e) {
+    //TODO: report warning
+    if (skipError === true) {
+      return undefined;
+    }
+
     throw Error('incorect property value: ' + e.message);
   }
 }
