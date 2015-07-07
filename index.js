@@ -48,17 +48,8 @@ function convert(resourceListing, apiDeclarations) {
   }
 
   var convertedSecurityNames = {};
-  var definitions = {};
-  var result = {
-    swagger: '2.0',
-    info: buildInfo(resourceListing),
-    paths: {}
-  };
-
-  if (resourceListing.authorizations) {
-    result.securityDefinitions = buildSecurityDefinitions(resourceListing,
-      convertedSecurityNames);
-  }
+  var securityDefinitions = buildSecurityDefinitions(resourceListing,
+    convertedSecurityNames);
 
   var tagDescriptions = {};
   resourceListing.apis.forEach(function(resource) {
@@ -68,6 +59,11 @@ function convert(resourceListing, apiDeclarations) {
     tagDescriptions[tagName] = resource.description;
   });
 
+  var tags = [];
+  var paths = {};
+  var definitions = {};
+  var pathComponents = {};
+
   // Handle embedded documents
   var resources = [resourceListing].concat(apiDeclarations);
 
@@ -76,8 +72,7 @@ function convert(resourceListing, apiDeclarations) {
     var tagName = extractTag(resource.resourcePath);
 
     if (isValue(tagName)) {
-      result.tags = result.tags || [];
-      result.tags.push(extend({}, {
+      tags.push(extend({}, {
         name: tagName,
         description: tagDescriptions[tagName]
       }));
@@ -85,17 +80,21 @@ function convert(resourceListing, apiDeclarations) {
     }
 
     extend(definitions, buildDefinitions(resource.models));
-    extend(result.paths, buildPaths(resource, operationTags));
+    extend(paths, buildPaths(resource, operationTags));
 
     // For each apiDeclaration if there is a basePath, assign path components
     // This might override previous assignments
-    extend(result, buildPathComponents(resource.basePath));
+    extend(pathComponents, buildPathComponents(resource.basePath));
   });
 
-  if (Object.keys(definitions).length) {
-    result.definitions = definitions;
-  }
-  return result;
+  return extend({}, pathComponents, {
+    swagger: '2.0',
+    info: buildInfo(resourceListing),
+    tags: undefinedIfEmpty(tags),
+    paths: undefinedIfEmpty(paths),
+    securityDefinitions: securityDefinitions,
+    definitions: undefinedIfEmpty(definitions)
+  });
 }
 
 /*
@@ -268,7 +267,7 @@ function buildDataType(oldDataType) {
     result.$ref = '#/definitions/' + result.$ref;
   }
 
-  return (Object.keys(result).length !== 0) ? result : undefined;
+  return undefinedIfEmpty(result);
 }
 
 /*
@@ -310,11 +309,7 @@ function buildPaths(apiDeclaration, tags) {
 */
 function buildOperation(oldOperation, declarationDefaults) {
   var oldParameters = oldOperation.parameters;
-  var parameters;
-
-  if (Array.isArray(oldParameters) && oldParameters.length) {
-    parameters = oldParameters.map(buildParameter);
-  }
+  var parameters = oldParameters && oldParameters.map(buildParameter);
 
   //TODO: process Swagger 1.2 'authorizations'
   return extend({}, declarationDefaults, {
@@ -324,7 +319,7 @@ function buildOperation(oldOperation, declarationDefaults) {
     deprecated: fixNonStringValue(oldOperation.deprecated),
     produces: oldOperation.produces,
     consumes: oldOperation.consumes,
-    parameters: parameters,
+    parameters: undefinedIfEmpty(parameters),
     responses: buildResponses(oldOperation)
   });
 }
@@ -407,6 +402,10 @@ function buildParameter(oldParameter) {
  * @returns {object} - Swagger 2.0 security definitions
  */
 function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
+  if (isEmpty(resourceListing.authorizations)) {
+    return undefined;
+  }
+
   var securityDefinitions = {};
 
   Object.keys(resourceListing.authorizations).forEach(function(name) {
@@ -505,13 +504,10 @@ function buildModel(oldModel) {
   }
 
   required = oldModel.required || required;
-  if (required.length === 0) {
-    required = undefined;
-  }
 
   return extend({}, {
     description: oldModel.description,
-    required: required,
+    required: undefinedIfEmpty(required),
     properties: properties,
     discriminator: oldModel.discriminator
   });
@@ -584,12 +580,42 @@ function extend(destination) {
 }
 
 /*
+ * Test if value is empty and if so return undefined
+ * @param value {*} - value to test
+ * @returns {array|object|undefined} - result
+*/
+function undefinedIfEmpty(value) {
+  return isEmpty(value) ? undefined : value;
+}
+
+/*
  * Test if value isn't null or undefined
  * @param value {*} - value to test
  * @returns {boolean} - result of test
 */
 function isValue(value) {
   return (value !== undefined && value !== null);
+}
+
+/*
+ * Test if value is empty
+ * @param value {*} - value to test
+ * @returns {boolean} - result of test
+*/
+function isEmpty(value) {
+  if (!isValue(value)) {
+    return true;
+  }
+
+  if (typeof value !== 'object') {
+    return true;
+  }
+
+  if (isValue(value.length)) {
+    return (value.length === 0);
+  }
+
+  return (Object.keys(value).length === 0);
 }
 
 /*
