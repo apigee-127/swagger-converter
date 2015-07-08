@@ -238,7 +238,16 @@ function buildDataType(oldDataType) {
 
   var items;
   if (result.type === 'array') {
-    items = buildDataType(oldDataType.items) || {type: 'object'};
+    var oldItems = oldDataType.items;
+    if (!isValue(oldItems)) {
+      items = {type: 'object'};
+    }
+    else {
+      if (typeof oldItems === 'string') {
+        oldItems = {type: oldItems};
+      }
+      items = buildDataType(oldItems);
+    }
   }
 
   extend(result, {
