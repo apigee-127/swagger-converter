@@ -48,17 +48,8 @@ function convert(resourceListing, apiDeclarations) {
   }
 
   var convertedSecurityNames = {};
-  var definitions = {};
-  var result = {
-    swagger: '2.0',
-    info: buildInfo(resourceListing),
-    paths: {}
-  };
-
-  if (resourceListing.authorizations) {
-    result.securityDefinitions = buildSecurityDefinitions(resourceListing,
-      convertedSecurityNames);
-  }
+  var securityDefinitions = buildSecurityDefinitions(resourceListing,
+    convertedSecurityNames);
 
   var tagDescriptions = {};
   resourceListing.apis.forEach(function(resource) {
@@ -68,6 +59,11 @@ function convert(resourceListing, apiDeclarations) {
     tagDescriptions[tagName] = resource.description;
   });
 
+  var tags = [];
+  var paths = {};
+  var definitions = {};
+  var pathComponents = {};
+
   // Handle embedded documents
   var resources = [resourceListing].concat(apiDeclarations);
 
@@ -76,8 +72,7 @@ function convert(resourceListing, apiDeclarations) {
     var tagName = extractTag(resource.resourcePath);
 
     if (isValue(tagName)) {
-      result.tags = result.tags || [];
-      result.tags.push(extend({}, {
+      tags.push(extend({}, {
         name: tagName,
         description: tagDescriptions[tagName]
       }));
@@ -85,17 +80,21 @@ function convert(resourceListing, apiDeclarations) {
     }
 
     extend(definitions, buildDefinitions(resource.models));
-    extend(result.paths, buildPaths(resource, operationTags));
+    extend(paths, buildPaths(resource, operationTags));
 
     // For each apiDeclaration if there is a basePath, assign path components
     // This might override previous assignments
-    extend(result, buildPathComponents(resource.basePath));
+    extend(pathComponents, buildPathComponents(resource.basePath));
   });
 
-  if (Object.keys(definitions).length) {
-    result.definitions = definitions;
-  }
-  return result;
+  return extend({}, pathComponents, {
+    swagger: '2.0',
+    info: buildInfo(resourceListing),
+    tags: undefinedIfEmpty(tags),
+    paths: undefinedIfEmpty(paths),
+    securityDefinitions: securityDefinitions,
+    definitions: undefinedIfEmpty(definitions)
+  });
 }
 
 /*
@@ -231,14 +230,23 @@ function buildDataType(oldDataType) {
   //TODO: handle '0' in default
   var defaultValue = oldDataType.default || oldDataType.defaultValue;
   if (result.type !== 'string') {
-    defaultValue = fixNonStringValue(defaultValue);
+    defaultValue = fixNonStringValue(defaultValue, true);
   }
 
   //TODO: support 'allowableValues' from 1.1 spec
 
   var items;
   if (result.type === 'array') {
-    items = buildDataType(oldDataType.items) || {type: 'object'};
+    var oldItems = oldDataType.items;
+    if (!isValue(oldItems)) {
+      items = {type: 'object'};
+    }
+    else {
+      if (typeof oldItems === 'string') {
+        oldItems = {type: oldItems};
+      }
+      items = buildDataType(oldItems);
+    }
   }
 
   extend(result, {
@@ -259,7 +267,7 @@ function buildDataType(oldDataType) {
     result.$ref = '#/definitions/' + result.$ref;
   }
 
-  return (Object.keys(result).length !== 0) ? result : undefined;
+  return undefinedIfEmpty(result);
 }
 
 /*
@@ -281,6 +289,10 @@ function buildPaths(apiDeclaration, tags) {
     if (!isValue(api.operations)) { return; }
 
     var pathString = api.path.replace('{format}', 'json');
+    if (pathString.charAt(0) !== '/') {
+      pathString = '/' + pathString;
+    }
+
     var path = paths[pathString] = {};
 
     api.operations.forEach(function(oldOperation) {
@@ -301,11 +313,7 @@ function buildPaths(apiDeclaration, tags) {
 */
 function buildOperation(oldOperation, declarationDefaults) {
   var oldParameters = oldOperation.parameters;
-  var parameters;
-
-  if (Array.isArray(oldParameters) && oldParameters.length) {
-    parameters = oldParameters.map(buildParameter);
-  }
+  var parameters = oldParameters && oldParameters.map(buildParameter);
 
   //TODO: process Swagger 1.2 'authorizations'
   return extend({}, declarationDefaults, {
@@ -315,7 +323,7 @@ function buildOperation(oldOperation, declarationDefaults) {
     deprecated: fixNonStringValue(oldOperation.deprecated),
     produces: oldOperation.produces,
     consumes: oldOperation.consumes,
-    parameters: parameters,
+    parameters: undefinedIfEmpty(parameters),
     responses: buildResponses(oldOperation)
   });
 }
@@ -398,6 +406,10 @@ function buildParameter(oldParameter) {
  * @returns {object} - Swagger 2.0 security definitions
  */
 function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
+  if (isEmpty(resourceListing.authorizations)) {
+    return undefined;
+  }
+
   var securityDefinitions = {};
 
   Object.keys(resourceListing.authorizations).forEach(function(name) {
@@ -488,7 +500,7 @@ function buildModel(oldModel) {
         required.push(propertyName);
       }
 
-      properties[propertyName] = extend(
+      properties[propertyName] = extend({},
         buildDataType(oldProperty),
         {description: oldProperty.description}
       );
@@ -496,13 +508,10 @@ function buildModel(oldModel) {
   }
 
   required = oldModel.required || required;
-  if (required.length === 0) {
-    required = undefined;
-  }
 
   return extend({}, {
     description: oldModel.description,
-    required: required,
+    required: undefinedIfEmpty(required),
     properties: properties,
     discriminator: oldModel.discriminator
   });
@@ -575,6 +584,15 @@ function extend(destination) {
 }
 
 /*
+ * Test if value is empty and if so return undefined
+ * @param value {*} - value to test
+ * @returns {array|object|undefined} - result
+*/
+function undefinedIfEmpty(value) {
+  return isEmpty(value) ? undefined : value;
+}
+
+/*
  * Test if value isn't null or undefined
  * @param value {*} - value to test
  * @returns {boolean} - result of test
@@ -584,11 +602,33 @@ function isValue(value) {
 }
 
 /*
+ * Test if value is empty
+ * @param value {*} - value to test
+ * @returns {boolean} - result of test
+*/
+function isEmpty(value) {
+  if (!isValue(value)) {
+    return true;
+  }
+
+  if (typeof value !== 'object') {
+    return true;
+  }
+
+  if (isValue(value.length)) {
+    return (value.length === 0);
+  }
+
+  return (Object.keys(value).length === 0);
+}
+
+/*
  * Convert string values into the proper type.
  * @param value {*} - value to convert
+ * @param skipError {boolean} - skip error during conversion
  * @returns {*} - transformed modles object
 */
-function fixNonStringValue(value) {
+function fixNonStringValue(value, skipError) {
   if (typeof value !== 'string') {
     return value;
   }
@@ -609,6 +649,11 @@ function fixNonStringValue(value) {
   try {
     return JSON.parse(value);
   } catch (e) {
+    //TODO: report warning
+    if (skipError === true) {
+      return undefined;
+    }
+
     throw Error('incorect property value: ' + e.message);
   }
 }
