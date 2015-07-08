@@ -289,6 +289,10 @@ function buildPaths(apiDeclaration, tags) {
     if (!isValue(api.operations)) { return; }
 
     var pathString = api.path.replace('{format}', 'json');
+    if (pathString.charAt(0) !== '/') {
+      pathString = '/' + pathString;
+    }
+
     var path = paths[pathString] = {};
 
     api.operations.forEach(function(oldOperation) {
