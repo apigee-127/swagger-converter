@@ -497,7 +497,7 @@ function buildModel(oldModel) {
         required.push(propertyName);
       }
 
-      properties[propertyName] = extend(
+      properties[propertyName] = extend({},
         buildDataType(oldProperty),
         {description: oldProperty.description}
       );
