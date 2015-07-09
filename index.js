@@ -92,6 +92,11 @@ Converter.prototype.convert = function(resourceListing, apiDeclarations) {
       operationTags = [tagName];
     }
 
+    this.customTypes = [];
+    if (isValue(resource.models)) {
+      this.customTypes = Object.keys(resource.models);
+    }
+
     extend(definitions, this.buildDefinitions(resource.models));
     extend(paths, this.buildPaths(resource, operationTags));
 
@@ -199,6 +204,10 @@ Converter.prototype.buildPathComponents = function(basePath) {
 Converter.prototype.buildTypeProperties = function(oldType) {
   if (!oldType) { return {}; }
 
+  if (this.customTypes.indexOf(oldType) !== -1) {
+    return {$ref: oldType};
+  }
+
   //TODO: handle list[<TYPE>] types from 1.1 spec
 
   var typeMap = {
@@ -219,7 +228,12 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     void:     {}
   };
 
-  return typeMap[oldType.toLowerCase()] || {$ref: oldType};
+  var type = typeMap[oldType.toLowerCase()];
+  if (isValue(type)) {
+    return type;
+  }
+
+  throw Error('Incorrect type value: ' + oldType);
 };
 
 /*
