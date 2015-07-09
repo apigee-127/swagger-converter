@@ -566,7 +566,7 @@ Converter.prototype.buildDefinitions = function(oldModels) {
       var child = models[childId];
 
       if (!isValue(child)) {
-        throw new Error('');
+        throw new Error('subTypes resolution: Missing "' + childId + '" type');
       }
 
       if (!isValue(child.allOf)) {
