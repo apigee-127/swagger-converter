@@ -263,17 +263,12 @@ Converter.prototype.buildDataType = function(oldDataType) {
   //TODO: support 'allowableValues' from 1.1 spec
 
   var items;
-  if (result.type === 'array') {
-    var oldItems = oldDataType.items;
-    if (!isValue(oldItems)) {
-      items = {type: 'object'};
+  var oldItems = oldDataType.items;
+  if (isValue(oldItems)) {
+    if (typeof oldItems === 'string') {
+      oldItems = {type: oldItems};
     }
-    else {
-      if (typeof oldItems === 'string') {
-        oldItems = {type: oldItems};
-      }
-      items = this.buildDataType(oldItems);
-    }
+    items = this.buildDataType(oldItems);
   }
 
   extend(result, {
@@ -393,25 +388,44 @@ Converter.prototype.buildParameter = function(oldParameter) {
     required: fixNonStringValue(oldParameter.required)
   });
 
-  // form was changed to formData in Swagger 2.0
   if (parameter.in === 'form') {
     parameter.in = 'formData';
   }
 
   var schema = this.buildDataType(oldParameter);
-  var allowMultiple = fixNonStringValue(oldParameter.allowMultiple);
-  if (allowMultiple === true) {
-    extend(parameter, {
-      type: 'array',
-      items: schema
-    });
-  } else if (oldParameter.paramType === 'body') {
+  if (oldParameter.paramType === 'body') {
     parameter.schema = schema;
-  } else {
-    extend(parameter, schema);
+    return parameter;
   }
 
-  return parameter;
+  //Encoding of non-body arguments is the same not matter which type is specified.
+  //So type only affects parameter validation, so it "safe" to add missing types.
+  if (!isValue(schema.type)) {
+    schema.type = 'string';
+  }
+
+  if (schema.type === 'array' &&
+    !(isValue(schema.items) && isValue(schema.items.type)))
+  {
+    schema.items = schema.items || {};
+    extend(schema.items, {type: 'string'});
+  }
+
+  var allowMultiple = fixNonStringValue(oldParameter.allowMultiple);
+  //Non-body parameters doesn't support array inside array. But in some specs
+  //both 'allowMultiple' is true and 'type' is array, so just ignore it.
+  if (allowMultiple === true && schema.type !== 'array') {
+    schema = {type: 'array', items: schema};
+  }
+
+  //From now on process only non-body arguments.
+  if (isValue(schema.$ref) ||
+    (isValue(schema.items) && isValue(schema.items.$ref)))
+  {
+    throw Error('Complex type is used inside non-body argument.');
+  }
+
+  return extend(parameter, schema);
 };
 
 /*
