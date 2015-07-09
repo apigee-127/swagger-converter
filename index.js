@@ -260,9 +260,7 @@ function buildDataType(oldDataType) {
     $ref: oldDataType.$ref,
   });
 
-  // Checking for the existence of '#/definitions/' is related to this bug:
-  //   https://github.com/apigee-127/swagger-converter/issues/6
-  if (isValue(result.$ref) && result.$ref.indexOf('#/definitions/') === -1) {
+  if (isValue(result.$ref)) {
     //TODO: better resolution based on 'id' field.
     result.$ref = '#/definitions/' + result.$ref;
   }
