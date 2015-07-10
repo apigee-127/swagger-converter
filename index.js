@@ -33,6 +33,17 @@ if (typeof window === 'undefined') {
   };
 }
 
+/**
+ * Swagger Converter Error
+ * @param {string} message - error message
+ */
+function SwaggerConverterError(message) {
+  this.message = message;
+  this.stack = Error().stack;
+}
+SwaggerConverterError.prototype = Object.create(Error.prototype);
+SwaggerConverterError.prototype.name = 'SwaggerConverterError';
+
 /*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
  * @param resourceListing {object} - root Swagger 1.2 document where it has a
@@ -200,6 +211,7 @@ Converter.prototype.buildPathComponents = function(basePath) {
  * @param oldDataType {object} - Swagger 1.2 type object
  *
  * @returns {object} - Swagger 2.0 equivalent
+ * @throws {SwaggerConverterError}
  */
 Converter.prototype.buildTypeProperties = function(oldType) {
   if (!oldType) { return {}; }
@@ -233,7 +245,7 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     return type;
   }
 
-  throw Error('Incorrect type value: ' + oldType);
+  throw new SwaggerConverterError('Incorrect type value: ' + oldType);
 };
 
 /*
@@ -379,6 +391,7 @@ Converter.prototype.buildResponses = function(oldOperation) {
  * Converts Swagger 1.2 parameter object to Swagger 2.0 parameter object
  * @param oldParameter {object} - Swagger 1.2 parameter object
  * @returns {object} - Swagger 2.0 parameter object
+ * @throws {SwaggerConverterError}
 */
 Converter.prototype.buildParameter = function(oldParameter) {
   var parameter = extend({}, {
@@ -422,7 +435,8 @@ Converter.prototype.buildParameter = function(oldParameter) {
   if (isValue(schema.$ref) ||
     (isValue(schema.items) && isValue(schema.items.$ref)))
   {
-    throw Error('Complex type is used inside non-body argument.');
+    throw new SwaggerConverterError(
+      'Complex type is used inside non-body argument.');
   }
 
   return extend(parameter, schema);
@@ -553,6 +567,7 @@ Converter.prototype.buildModel = function(oldModel) {
  * object
  * @param oldModels {object} - an object containing Swagger 1.2 objects
  * @returns {object} - Swagger 2.0 definitions object
+ * @throws {SwaggerConverterError}
 */
 Converter.prototype.buildDefinitions = function(oldModels) {
   var models = {};
@@ -566,7 +581,8 @@ Converter.prototype.buildDefinitions = function(oldModels) {
       var child = models[childId];
 
       if (!isValue(child)) {
-        throw new Error('subTypes resolution: Missing "' + childId + '" type');
+        throw new SwaggerConverterError('subTypes resolution: Missing "' +
+          childId + '" type');
       }
 
       if (!isValue(child.allOf)) {
@@ -591,7 +607,7 @@ Converter.prototype.forEach = function(collection, iteratee) {
   }
 
   if (typeof collection !== 'object') {
-    throw Error('Expected array or object, instead got: ' +
+    throw new SwaggerConverterError('Expected array or object, instead got: ' +
       JSON.stringify(collection, null, 2));
   }
 
@@ -674,6 +690,7 @@ function isEmpty(value) {
  * @param value {*} - value to convert
  * @param skipError {boolean} - skip error during conversion
  * @returns {*} - transformed modles object
+ * @throws {SwaggerConverterError}
 */
 function fixNonStringValue(value, skipError) {
   if (typeof value !== 'string') {
@@ -701,6 +718,6 @@ function fixNonStringValue(value, skipError) {
       return undefined;
     }
 
-    throw Error('incorect property value: ' + e.message);
+    throw new SwaggerConverterError('incorect property value: ' + e.message);
   }
 }
