@@ -23,18 +23,8 @@
  * THE SOFTWARE.
  */
 
+var assert = require('assert');
 var urlParse = require('url').parse;
-var clone = require('lodash.clonedeep');
-
-var primitiveTypes = [
-  'string',
-  'number',
-  'boolean',
-  'integer',
-  'array',
-  'void',
-  'File'
-];
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -43,6 +33,17 @@ if (typeof window === 'undefined') {
     convert: convert
   };
 }
+
+/**
+ * Swagger Converter Error
+ * @param {string} message - error message
+ */
+function SwaggerConverterError(message) {
+  this.message = message;
+  this.stack = Error().stack;
+}
+SwaggerConverterError.prototype = Object.create(Error.prototype);
+SwaggerConverterError.prototype.name = 'SwaggerConverterError';
 
 /*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
@@ -53,82 +54,107 @@ if (typeof window === 'undefined') {
  * @returns {object} - Fully converted Swagger 2.0 document
 */
 function convert(resourceListing, apiDeclarations) {
-  if (typeof resourceListing !== 'object') {
-    throw new Error('resourceListing must be an object');
-  }
-  if (!Array.isArray(apiDeclarations)) {
-    apiDeclarations = [];
-  }
+  var converter = new Converter();
+  return converter.convert(resourceListing, apiDeclarations);
+}
+
+var Converter = function() {};
+
+/*
+ * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
+ * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param apiDeclarations {array} - a list of resources
+ * @returns {object} - Fully converted Swagger 2.0 document
+*/
+Converter.prototype.convert = function(resourceListing, apiDeclarations) {
+  assert(typeof resourceListing === 'object');
 
   var convertedSecurityNames = {};
-  var models = {};
-  var result = {
-    swagger: '2.0',
-    info: buildInfo(resourceListing),
-    paths: {}
-  };
+  var securityDefinitions = this.buildSecurityDefinitions(resourceListing,
+    convertedSecurityNames);
 
-  if (resourceListing.authorizations) {
-    result.securityDefinitions = buildSecurityDefinitions(resourceListing,
-      convertedSecurityNames);
-  }
+  var tagDescriptions = {};
+  this.forEach(resourceListing.apis, function(resource) {
+    var tagName = this.extractTag(resource.path);
+    if (!isValue(tagName)) { return; }
 
-  if (resourceListing.basePath) {
-    assignPathComponents(resourceListing.basePath, result);
-  }
+    tagDescriptions[tagName] = resource.description;
+  });
 
-  extend(models, resourceListing.models);
+  var tags = [];
+  var paths = {};
+  var definitions = {};
+  var pathComponents = {};
 
   // Handle embedded documents
-  if (Array.isArray(resourceListing.apis)) {
-    if (apiDeclarations.length > 0) {
-      result.tags = [];
-    }
-    resourceListing.apis.forEach(function(api) {
-      if (result.tags) {
-        result.tags.push({
-          'name': api.path.replace('.{format}', '').substring(1),
-          'description': api.description});
-      }
-      if (Array.isArray(api.operations)) {
-        result.paths[api.path] = buildPath(api, resourceListing);
-      }
-    });
+  var resources = [resourceListing];
+  if (isValue(apiDeclarations)) {
+    resources = resources.concat(apiDeclarations);
   }
 
-  apiDeclarations.forEach(function(apiDeclaration) {
+  this.forEach(resources, function(resource) {
+    var operationTags;
+    var tagName = this.extractTag(resource.resourcePath);
+
+    if (isValue(tagName)) {
+      tags.push(extend({}, {
+        name: tagName,
+        description: tagDescriptions[tagName]
+      }));
+      operationTags = [tagName];
+    }
+
+    this.customTypes = [];
+    if (isValue(resource.models)) {
+      this.customTypes = Object.keys(resource.models);
+    }
+
+    extend(definitions, this.buildDefinitions(resource.models));
+    extend(paths, this.buildPaths(resource, operationTags));
 
     // For each apiDeclaration if there is a basePath, assign path components
     // This might override previous assignments
-    if (apiDeclaration.basePath) {
-      assignPathComponents(apiDeclaration.basePath, result);
-    }
-
-    if (!Array.isArray(apiDeclaration.apis)) { return; }
-    apiDeclaration.apis.forEach(function(api) {
-      result.paths[api.path] = buildPath(api, apiDeclaration);
-
-    });
-    if (apiDeclaration.models && Object.keys(apiDeclaration.models).length) {
-      extend(models, transformAllModels(apiDeclaration.models));
-    }
+    extend(pathComponents, this.buildPathComponents(resource.basePath));
   });
 
-  if (Object.keys(models).length) {
-    result.definitions = transformAllModels(models);
-  }
+  return extend({}, pathComponents, {
+    swagger: '2.0',
+    info: this.buildInfo(resourceListing),
+    tags: undefinedIfEmpty(tags),
+    paths: undefinedIfEmpty(paths),
+    securityDefinitions: securityDefinitions,
+    definitions: undefinedIfEmpty(definitions)
+  });
+};
 
-  return result;
-}
+/*
+ * Extract name of the tag from resourcePath
+ * @param resourcePath {string} - Swagger 1.2 resource path
+ * @returns {string} - tag name
+*/
+Converter.prototype.extractTag = function(resourcePath) {
+  if (!isValue(resourcePath)) { return; }
+
+  var path = urlParse(resourcePath).path;
+  if (!isValue(path)) { return; }
+
+  path = path.replace(/\/$/, '');
+  path = path.replace('{format}', 'json');
+  path = path.replace(/.json$/, '');
+  path = path.split(['/']).pop();
+
+  if (path === '') { return; }
+  return path;
+};
 
 /*
  * Builds "info" section of Swagger 2.0 document
  * @param source {object} - Swagger 1.2 document object
  * @returns {object} - "info" section of Swagger 2.0 document
 */
-function buildInfo(source) {
+Converter.prototype.buildInfo = function(source) {
   var info = {
-    version: source.apiVersion,
+    version: source.apiVersion || '1.0.0',
     title: 'Title was not specified'
   };
 
@@ -161,220 +187,261 @@ function buildInfo(source) {
   }
 
   return info;
-}
+};
 
 /*
- * Assigns host, basePath and schemes for Swagger 2.0 result document from
+ * Get host, basePath and schemes for Swagger 2.0 result document from
  * Swagger 1.2 basePath.
  * @param basePath {string} - the base path from Swagger 1.2
- * @param result {object} - Swagger 2.0 document
 */
-function assignPathComponents(basePath, result) {
+Converter.prototype.buildPathComponents = function(basePath) {
+  if (!basePath) { return {}; }
+
   var url = urlParse(basePath);
-  result.host = url.host;
-  result.basePath = url.path;
-  if (url.protocol) {
-    result.schemes = [url.protocol.substr(0, url.protocol.length - 1)];
-  }
-}
+  return {
+    host: url.host,
+    basePath: url.path || '/',
+    //url.protocol include traling colon
+    schemes: url.protocol && [url.protocol.slice(0, -1)]
+  };
+};
 
 /*
- * Process a data type object.
+ * Builds a Swagger 2.0 type properites from a Swagger 1.2 type properties
+ *
+ * @param oldDataType {object} - Swagger 1.2 type object
+ *
+ * @returns {object} - Swagger 2.0 equivalent
+ * @throws {SwaggerConverterError}
+ */
+Converter.prototype.buildTypeProperties = function(oldType) {
+  if (!oldType) { return {}; }
+
+  if (this.customTypes.indexOf(oldType) !== -1) {
+    return {$ref: oldType};
+  }
+
+  //TODO: handle list[<TYPE>] types from 1.1 spec
+
+  var typeMap = {
+    integer:  {type: 'integer'},
+    number:   {type: 'number'},
+    string:   {type: 'string'},
+    boolean:  {type: 'boolean'},
+    array:    {type: 'array'},
+    file:     {type: 'file'},
+    int:      {type: 'integer', format: 'int32'},
+    long:     {type: 'integer', format: 'int64'},
+    float:    {type: 'number',  format: 'float'},
+    double:   {type: 'double',  format: 'double'},
+    byte:     {type: 'string',  format: 'byte'},
+    date:     {type: 'string',  format: 'date'},
+    datetime: {type: 'string',  format: 'date-time'},
+    list:     {type: 'array'},
+    void:     {}
+  };
+
+  var type = typeMap[oldType.toLowerCase()];
+  if (isValue(type)) {
+    return type;
+  }
+
+  throw new SwaggerConverterError('Incorrect type value: ' + oldType);
+};
+
+/*
+ * Builds a Swagger 2.0 data type properites from a Swagger 1.2 data type properties
  *
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
  *  1.2.md#433-data-type-fields}
  *
- * @param field {object} - A data type field
+ * @param oldDataType {object} - Swagger 1.2 data type object
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-function processDataType(field, fixRef) {
-  field = clone(field);
+Converter.prototype.buildDataType = function(oldDataType) {
+  if (!oldDataType) { return; }
+  assert(typeof oldDataType === 'object');
 
-  // Checking for the existence of '#/definitions/' is related to this bug:
-  //   https://github.com/apigee-127/swagger-converter/issues/6
-  if (field.$ref && field.$ref.indexOf('#/definitions/') === -1) {
-    field.$ref = '#/definitions/' + field.$ref;
-  } else if (field.items && field.items.$ref &&
-             field.items.$ref.indexOf('#/definitions/') === -1) {
-    field.items.$ref = '#/definitions/' + field.items.$ref;
+  var result = this.buildTypeProperties(
+    oldDataType.type || oldDataType.dataType || oldDataType.responseClass
+  );
+
+  //TODO: handle '0' in default
+  var defaultValue = oldDataType.default || oldDataType.defaultValue;
+  if (result.type !== 'string') {
+    defaultValue = fixNonStringValue(defaultValue, true);
   }
 
-  if (fixRef) {
-    if (field.type && primitiveTypes.indexOf(field.type) === -1) {
-      field = {$ref: '#/definitions/' + field.type};
+  //TODO: support 'allowableValues' from 1.1 spec
+
+  var items;
+  var oldItems = oldDataType.items;
+  if (isValue(oldItems)) {
+    if (typeof oldItems === 'string') {
+      oldItems = {type: oldItems};
     }
+    items = this.buildDataType(oldItems);
   }
 
-  if (field.type === 'integer') {
-    if (field.minimum) {
-      field.minimum = parseInt(field.minimum, 10);
-    }
-
-    if (field.maximum) {
-      field.maximum = parseInt(field.maximum, 10);
-    }
-  } else {
-    if (field.minimum) {
-      field.minimum = parseFloat(field.minimum);
-    }
-
-    if (field.maximum) {
-      field.maximum = parseFloat(field.maximum);
-    }
-  }
-
-  if (field.defaultValue) {
-    if (field.type === 'integer') {
-      field.default = parseInt(field.defaultValue, 10);
-    } else if (field.type === 'number') {
-      field.default = parseFloat(field.defaultValue);
-    } else {
-      field.default = field.defaultValue;
-    }
-
-    delete field.defaultValue;
-  }
-
-  return field;
-}
-
-/*
- * Builds a Swagger 2.0 path object form a Swagger 1.2 path object
- * @param api {object} - Swagger 1.2 path object
- * @param apiDeclaration {object} - parent apiDeclaration
- * @returns {object} - Swagger 2.0 path object
-*/
-function buildPath(api, apiDeclaration) {
-  var path = {};
-
-  api.operations.forEach(function(oldOperation) {
-    var method = oldOperation.method.toLowerCase();
-    path[method] = buildOperation(oldOperation, apiDeclaration.produces,
-      apiDeclaration.consumes, apiDeclaration.resourcePath);
+  extend(result, {
+    format: oldDataType.format,
+    items: items,
+    uniqueItems: fixNonStringValue(oldDataType.uniqueItems),
+    minimum: fixNonStringValue(oldDataType.minimum),
+    maximum: fixNonStringValue(oldDataType.maximum),
+    default: defaultValue,
+    enum: oldDataType.enum,
+    $ref: oldDataType.$ref,
   });
 
-  return path;
-}
+  if (isValue(result.$ref)) {
+    //TODO: better resolution based on 'id' field.
+    result.$ref = '#/definitions/' + result.$ref;
+  }
+
+  return undefinedIfEmpty(result);
+};
+
+/*
+ * Builds a Swagger 2.0 paths object form a Swagger 1.2 path object
+ * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
+ * @param tag {array} - array of Swagger 2.0 tag names
+ * @returns {object} - Swagger 2.0 path object
+*/
+Converter.prototype.buildPaths = function(apiDeclaration, tags) {
+  var paths = {};
+
+  var operationDefaults = {
+    produces: apiDeclaration.produces,
+    consumes: apiDeclaration.consumes,
+    tags: tags
+  };
+
+  this.forEach(apiDeclaration.apis, function(api) {
+    if (!isValue(api.operations)) { return; }
+
+    var pathString = api.path.replace('{format}', 'json');
+    if (pathString.charAt(0) !== '/') {
+      pathString = '/' + pathString;
+    }
+
+    var path = paths[pathString] = {};
+
+    this.forEach(api.operations, function(oldOperation) {
+      var method = oldOperation.method || oldOperation.httpMethod;
+      method = method.toLowerCase();
+      path[method] = this.buildOperation(oldOperation, operationDefaults);
+    });
+  });
+
+  return paths;
+};
 
 /*
  * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
  * @param oldOperation {object} - Swagger 1.2 operation object
- * @param produces {array} - from containing apiDeclaration
- * @param consumes {array} - from containing apiDeclaration
+ * @param operationDefaults {object} - defaults from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
-function buildOperation(oldOperation, produces, consumes, resourcePath) {
-  var operation = {
-    responses: {},
-    description: oldOperation.description || ''
-  };
+Converter.prototype.buildOperation = function(oldOperation, operationDefaults) {
+  var parameters = [];
 
-  if (resourcePath) {
-    operation.tags = [];
-    operation.tags.push(resourcePath.substr(1));
-  }
+  this.forEach(oldOperation.parameters, function(oldParameter) {
+    parameters.push(this.buildParameter(oldParameter));
+  });
 
-  if (oldOperation.summary) {
-    operation.summary = oldOperation.summary;
-  }
-
-  if (oldOperation.nickname) {
-    operation.operationId = oldOperation.nickname;
-  }
-
-  if (produces) { operation.produces = produces; }
-  if (consumes) { operation.consumes = consumes; }
-
-  if (Array.isArray(oldOperation.parameters) &&
-      oldOperation.parameters.length) {
-    operation.parameters = oldOperation.parameters.map(function(parameter) {
-      return buildParameter(processDataType(parameter, false));
-    });
-  }
-
-  if (Array.isArray(oldOperation.responseMessages)) {
-    oldOperation.responseMessages.forEach(function(oldResponse) {
-      operation.responses[oldResponse.code] = buildResponse(oldResponse);
-    });
-  }
-
-  if (oldOperation.type && oldOperation.type !== 'void' &&
-      primitiveTypes.indexOf(oldOperation.type) === -1) {
-    operation.responses['default'] = {
-      'schema': {
-        '$ref': '#/definitions/' + oldOperation.type,
-      }
-    };
-  }
-
-  if (!Object.keys(operation.responses).length) {
-    operation.responses = {
-      '200': {
-        description: 'No response was specified'
-      }
-    };
-  }
-
-  return operation;
-}
+  //TODO: process Swagger 1.2 'authorizations'
+  return extend({}, operationDefaults, {
+    operationId: oldOperation.nickname,
+    summary: oldOperation.summary,
+    description: oldOperation.description || oldOperation.notes,
+    deprecated: fixNonStringValue(oldOperation.deprecated),
+    produces: oldOperation.produces,
+    consumes: oldOperation.consumes,
+    parameters: undefinedIfEmpty(parameters),
+    responses: this.buildResponses(oldOperation)
+  });
+};
 
 /*
- * Builds a Swagger 2.0 response object form a Swagger 1.2 response object
- * @param oldResponse {object} - Swagger 1.2 response object
+ * Builds a Swagger 2.0 responses object form a Swagger 1.2 responseMessages object
+ * @param oldOperation {object} - Swagger 1.2 operation object
  * @returns {object} - Swagger 2.0 response object
 */
-function buildResponse(oldResponse) {
-  var response = {};
+Converter.prototype.buildResponses = function(oldOperation) {
+  var responses = {
+    '200': {description: 'No response was specified'}
+  };
 
-  // TODO: Confirm this is correct
-  response.description = oldResponse.message;
+  this.forEach(oldOperation.responseMessages, function(oldResponse) {
+    //TODO: process Swagger 1.2 'responseModel'
+    responses['' + oldResponse.code] = extend({}, {
+      description: oldResponse.message,
+    });
+  });
 
-  return response;
-}
+  extend(responses['200'], {
+    schema: this.buildDataType(oldOperation)
+  });
+
+  return responses;
+};
 
 /*
  * Converts Swagger 1.2 parameter object to Swagger 2.0 parameter object
  * @param oldParameter {object} - Swagger 1.2 parameter object
  * @returns {object} - Swagger 2.0 parameter object
+ * @throws {SwaggerConverterError}
 */
-function buildParameter(oldParameter) {
-  var parameter = {
+Converter.prototype.buildParameter = function(oldParameter) {
+  var parameter = extend({}, {
     in: oldParameter.paramType,
     description: oldParameter.description,
     name: oldParameter.name,
-    required: !!oldParameter.required
-  };
-  var copyProperties = [
-    'default',
-    'maximum',
-    'minimum',
-    'items'
-  ];
+    required: fixNonStringValue(oldParameter.required)
+  });
 
-  if (primitiveTypes.indexOf(oldParameter.type) === -1) {
-    parameter.schema = {$ref: '#/definitions/' + oldParameter.type};
-  } else {
-    parameter.type = oldParameter.type.toLowerCase();
-
-    copyProperties.forEach(function(name) {
-      if (typeof oldParameter[name] !== 'undefined') {
-        parameter[name] = oldParameter[name];
-      }
-    });
-
-    if (typeof oldParameter.defaultValue !== 'undefined') {
-      parameter.default = oldParameter.defaultValue;
-    }
-  }
-
-  // form was changed to formData in Swagger 2.0
   if (parameter.in === 'form') {
     parameter.in = 'formData';
   }
 
-  return parameter;
-}
+  var schema = this.buildDataType(oldParameter);
+  if (oldParameter.paramType === 'body') {
+    parameter.schema = schema;
+    return parameter;
+  }
+
+  //Encoding of non-body arguments is the same not matter which type is specified.
+  //So type only affects parameter validation, so it "safe" to add missing types.
+  if (!isValue(schema.type)) {
+    schema.type = 'string';
+  }
+
+  if (schema.type === 'array' &&
+    !(isValue(schema.items) && isValue(schema.items.type)))
+  {
+    schema.items = schema.items || {};
+    extend(schema.items, {type: 'string'});
+  }
+
+  var allowMultiple = fixNonStringValue(oldParameter.allowMultiple);
+  //Non-body parameters doesn't support array inside array. But in some specs
+  //both 'allowMultiple' is true and 'type' is array, so just ignore it.
+  if (allowMultiple === true && schema.type !== 'array') {
+    schema = {type: 'array', items: schema};
+  }
+
+  //From now on process only non-body arguments.
+  if (isValue(schema.$ref) ||
+    (isValue(schema.items) && isValue(schema.items.$ref)))
+  {
+    throw new SwaggerConverterError(
+      'Complex type is used inside non-body argument.');
+  }
+
+  return extend(parameter, schema);
+};
 
 /*
  * Convertes Swagger 1.2 authorization definitions to Swagger 2.0 security
@@ -392,7 +459,12 @@ function buildParameter(oldParameter) {
  *
  * @returns {object} - Swagger 2.0 security definitions
  */
-function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
+Converter.prototype.buildSecurityDefinitions = function(resourceListing,
+  convertedSecurityNames) {
+  if (isEmpty(resourceListing.authorizations)) {
+    return undefined;
+  }
+
   var securityDefinitions = {};
 
   Object.keys(resourceListing.authorizations).forEach(function(name) {
@@ -459,86 +531,674 @@ function buildSecurityDefinitions(resourceListing, convertedSecurityNames) {
   });
 
   return securityDefinitions;
-}
+};
 
 /*
- * Transforms a Swagger 1.2 model object to a Swagger 2.0 model object
- * @param model {object} - (mutable) Swagger 1.2 model object
+ * Convertes a Swagger 1.2 model object to a Swagger 2.0 model object
+ * @param model {object} - Swagger 1.2 model object
+ * @returns {object} - Swagger 2.0 model object
 */
-function transformModel(model) {
-  if (typeof model.properties === 'object') {
-    Object.keys(model.properties).forEach(function(propertieName) {
-      model.properties[propertieName] =
-        processDataType(model.properties[propertieName], true);
-    });
-  }
-}
+Converter.prototype.buildModel = function(oldModel) {
+  var required = [];
+  var properties = {};
 
-/*
- * Transfers the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
- * object
- * @param models {object} - (mutable) an object containing Swagger 1.2 objects
- * @returns {object} - transformed modles object
-*/
-function transformAllModels(models) {
-  var modelsClone = clone(models);
-
-  if (typeof models !== 'object') {
-    throw new Error('models must be object');
-  }
-
-  var hierarchy = {};
-
-  Object.keys(modelsClone).forEach(function(modelId) {
-    var model = modelsClone[modelId];
-    delete model['id'];
-
-    transformModel(model);
-
-    if (model.subTypes) {
-      hierarchy[modelId] = model.subTypes;
-
-      delete model.subTypes;
+  this.forEach(oldModel.properties, function(oldProperty, propertyName) {
+    if (fixNonStringValue(oldProperty.required) === true) {
+      required.push(propertyName);
     }
+
+    properties[propertyName] = extend({},
+      this.buildDataType(oldProperty),
+      {description: oldProperty.description}
+    );
   });
 
-  Object.keys(hierarchy).forEach(function(parent) {
-    hierarchy[parent].forEach(function(childId) {
-      var childModel = modelsClone[childId];
+  required = oldModel.required || required;
 
-      if (childModel) {
-        var allOf = (childModel.allOf || []).concat({
-          $ref: '#/definitions/' + parent
-        }).concat(clone(childModel));
-        for (var member in childModel) {
-          delete childModel[member];
-        }
-        childModel.allOf = allOf;
+  return extend({}, {
+    description: oldModel.description,
+    required: undefinedIfEmpty(required),
+    properties: properties,
+    discriminator: oldModel.discriminator
+  });
+};
+
+/*
+ * Convertes the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
+ * object
+ * @param oldModels {object} - an object containing Swagger 1.2 objects
+ * @returns {object} - Swagger 2.0 definitions object
+ * @throws {SwaggerConverterError}
+*/
+Converter.prototype.buildDefinitions = function(oldModels) {
+  var models = {};
+
+  this.forEach(oldModels, function(oldModel, modelId) {
+    models[modelId] = this.buildModel(oldModel);
+  });
+
+  this.forEach(oldModels, function(parent, parentId) {
+    this.forEach(parent.subTypes, function(childId) {
+      var child = models[childId];
+
+      if (!isValue(child)) {
+        throw new SwaggerConverterError('subTypes resolution: Missing "' +
+          childId + '" type');
       }
+
+      if (!isValue(child.allOf)) {
+        models[childId] = child = {allOf: [child]};
+      }
+
+      child.allOf.push({$ref: '#/definitions/' + parentId});
     });
   });
 
-  return modelsClone;
-}
+  return models;
+};
+
+/*
+ * Iterates over elements of collection invoking iteratee for each element
+ * @param collection {array|object} - the collection to iterate over
+ * @parma iteratee {function} - the function invoked per iteration
+*/
+Converter.prototype.forEach = function(collection, iteratee) {
+  if (!isValue(collection)) {
+    return;
+  }
+
+  if (typeof collection !== 'object') {
+    throw new SwaggerConverterError('Expected array or object, instead got: ' +
+      JSON.stringify(collection, null, 2));
+  }
+
+  iteratee = iteratee.bind(this);
+  if (Array.isArray(collection)) {
+    collection.forEach(iteratee);
+  }
+  else {
+    Object.keys(collection).forEach(function(key) {
+      iteratee(collection[key], key);
+    });
+  }
+};
 
 /*
  * Extends an object with another
- * @param source {object} - object that will get extended
- * @parma distention {object} - object the will used to extend source
+ * @param destination {object} - object that will get extended
+ * @parma source {object} - object the will used to extend source
 */
-function extend(source, distention) {
-  if (typeof source !== 'object') {
-    throw new Error('source must be objects');
+function extend(destination) {
+  assert(typeof destination === 'object');
+
+  function assign(source) {
+    if (!source) { return; }
+    Object.keys(source).forEach(function(key) {
+      var value = source[key];
+      if (isValue(value)) {
+        destination[key] = value;
+      }
+    });
   }
 
-  if (typeof distention === 'object') {
-    Object.keys(distention).forEach(function(key) {
-      source[key] = distention[key];
-    });
+  for (var i = 1; i < arguments.length; ++i) {
+    assign(arguments[i]);
+  }
+  return destination;
+}
+
+/*
+ * Test if value is empty and if so return undefined
+ * @param value {*} - value to test
+ * @returns {array|object|undefined} - result
+*/
+function undefinedIfEmpty(value) {
+  return isEmpty(value) ? undefined : value;
+}
+
+/*
+ * Test if value isn't null or undefined
+ * @param value {*} - value to test
+ * @returns {boolean} - result of test
+*/
+function isValue(value) {
+  return (value !== undefined && value !== null);
+}
+
+/*
+ * Test if value is empty
+ * @param value {*} - value to test
+ * @returns {boolean} - result of test
+*/
+function isEmpty(value) {
+  if (!isValue(value)) {
+    return true;
+  }
+
+  if (typeof value !== 'object') {
+    return true;
+  }
+
+  if (isValue(value.length)) {
+    return (value.length === 0);
+  }
+
+  return (Object.keys(value).length === 0);
+}
+
+/*
+ * Convert string values into the proper type.
+ * @param value {*} - value to convert
+ * @param skipError {boolean} - skip error during conversion
+ * @returns {*} - transformed modles object
+ * @throws {SwaggerConverterError}
+*/
+function fixNonStringValue(value, skipError) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  if (value === '') {
+    return undefined;
+  }
+
+  var lcValue = value.toLowerCase();
+
+  if (lcValue === 'true') {
+    return true;
+  }
+  if (lcValue === 'false') {
+    return false;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    //TODO: report warning
+    if (skipError === true) {
+      return undefined;
+    }
+
+    throw new SwaggerConverterError('incorect property value: ' + e.message);
   }
 }
 
-},{"lodash.clonedeep":7,"url":6}],2:[function(require,module,exports){
+},{"assert":2,"url":9}],2:[function(require,module,exports){
+// http://wiki.commonjs.org/wiki/Unit_Testing/1.0
+//
+// THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
+//
+// Originally from narwhal.js (http://narwhaljs.org)
+// Copyright (c) 2009 Thomas Robinson <280north.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the 'Software'), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+// when used in node, this will actually load the util module we depend on
+// versus loading the builtin util module as happens otherwise
+// this is a bug in node module loading as far as I am concerned
+var util = require('util/');
+
+var pSlice = Array.prototype.slice;
+var hasOwn = Object.prototype.hasOwnProperty;
+
+// 1. The assert module provides functions that throw
+// AssertionError's when particular conditions are not met. The
+// assert module must conform to the following interface.
+
+var assert = module.exports = ok;
+
+// 2. The AssertionError is defined in assert.
+// new assert.AssertionError({ message: message,
+//                             actual: actual,
+//                             expected: expected })
+
+assert.AssertionError = function AssertionError(options) {
+  this.name = 'AssertionError';
+  this.actual = options.actual;
+  this.expected = options.expected;
+  this.operator = options.operator;
+  if (options.message) {
+    this.message = options.message;
+    this.generatedMessage = false;
+  } else {
+    this.message = getMessage(this);
+    this.generatedMessage = true;
+  }
+  var stackStartFunction = options.stackStartFunction || fail;
+
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(this, stackStartFunction);
+  }
+  else {
+    // non v8 browsers so we can have a stacktrace
+    var err = new Error();
+    if (err.stack) {
+      var out = err.stack;
+
+      // try to strip useless frames
+      var fn_name = stackStartFunction.name;
+      var idx = out.indexOf('\n' + fn_name);
+      if (idx >= 0) {
+        // once we have located the function frame
+        // we need to strip out everything before it (and its line)
+        var next_line = out.indexOf('\n', idx + 1);
+        out = out.substring(next_line + 1);
+      }
+
+      this.stack = out;
+    }
+  }
+};
+
+// assert.AssertionError instanceof Error
+util.inherits(assert.AssertionError, Error);
+
+function replacer(key, value) {
+  if (util.isUndefined(value)) {
+    return '' + value;
+  }
+  if (util.isNumber(value) && (isNaN(value) || !isFinite(value))) {
+    return value.toString();
+  }
+  if (util.isFunction(value) || util.isRegExp(value)) {
+    return value.toString();
+  }
+  return value;
+}
+
+function truncate(s, n) {
+  if (util.isString(s)) {
+    return s.length < n ? s : s.slice(0, n);
+  } else {
+    return s;
+  }
+}
+
+function getMessage(self) {
+  return truncate(JSON.stringify(self.actual, replacer), 128) + ' ' +
+         self.operator + ' ' +
+         truncate(JSON.stringify(self.expected, replacer), 128);
+}
+
+// At present only the three keys mentioned above are used and
+// understood by the spec. Implementations or sub modules can pass
+// other keys to the AssertionError's constructor - they will be
+// ignored.
+
+// 3. All of the following functions must throw an AssertionError
+// when a corresponding condition is not met, with a message that
+// may be undefined if not provided.  All assertion methods provide
+// both the actual and expected values to the assertion error for
+// display purposes.
+
+function fail(actual, expected, message, operator, stackStartFunction) {
+  throw new assert.AssertionError({
+    message: message,
+    actual: actual,
+    expected: expected,
+    operator: operator,
+    stackStartFunction: stackStartFunction
+  });
+}
+
+// EXTENSION! allows for well behaved errors defined elsewhere.
+assert.fail = fail;
+
+// 4. Pure assertion tests whether a value is truthy, as determined
+// by !!guard.
+// assert.ok(guard, message_opt);
+// This statement is equivalent to assert.equal(true, !!guard,
+// message_opt);. To test strictly for the value true, use
+// assert.strictEqual(true, guard, message_opt);.
+
+function ok(value, message) {
+  if (!value) fail(value, true, message, '==', assert.ok);
+}
+assert.ok = ok;
+
+// 5. The equality assertion tests shallow, coercive equality with
+// ==.
+// assert.equal(actual, expected, message_opt);
+
+assert.equal = function equal(actual, expected, message) {
+  if (actual != expected) fail(actual, expected, message, '==', assert.equal);
+};
+
+// 6. The non-equality assertion tests for whether two objects are not equal
+// with != assert.notEqual(actual, expected, message_opt);
+
+assert.notEqual = function notEqual(actual, expected, message) {
+  if (actual == expected) {
+    fail(actual, expected, message, '!=', assert.notEqual);
+  }
+};
+
+// 7. The equivalence assertion tests a deep equality relation.
+// assert.deepEqual(actual, expected, message_opt);
+
+assert.deepEqual = function deepEqual(actual, expected, message) {
+  if (!_deepEqual(actual, expected)) {
+    fail(actual, expected, message, 'deepEqual', assert.deepEqual);
+  }
+};
+
+function _deepEqual(actual, expected) {
+  // 7.1. All identical values are equivalent, as determined by ===.
+  if (actual === expected) {
+    return true;
+
+  } else if (util.isBuffer(actual) && util.isBuffer(expected)) {
+    if (actual.length != expected.length) return false;
+
+    for (var i = 0; i < actual.length; i++) {
+      if (actual[i] !== expected[i]) return false;
+    }
+
+    return true;
+
+  // 7.2. If the expected value is a Date object, the actual value is
+  // equivalent if it is also a Date object that refers to the same time.
+  } else if (util.isDate(actual) && util.isDate(expected)) {
+    return actual.getTime() === expected.getTime();
+
+  // 7.3 If the expected value is a RegExp object, the actual value is
+  // equivalent if it is also a RegExp object with the same source and
+  // properties (`global`, `multiline`, `lastIndex`, `ignoreCase`).
+  } else if (util.isRegExp(actual) && util.isRegExp(expected)) {
+    return actual.source === expected.source &&
+           actual.global === expected.global &&
+           actual.multiline === expected.multiline &&
+           actual.lastIndex === expected.lastIndex &&
+           actual.ignoreCase === expected.ignoreCase;
+
+  // 7.4. Other pairs that do not both pass typeof value == 'object',
+  // equivalence is determined by ==.
+  } else if (!util.isObject(actual) && !util.isObject(expected)) {
+    return actual == expected;
+
+  // 7.5 For all other Object pairs, including Array objects, equivalence is
+  // determined by having the same number of owned properties (as verified
+  // with Object.prototype.hasOwnProperty.call), the same set of keys
+  // (although not necessarily the same order), equivalent values for every
+  // corresponding key, and an identical 'prototype' property. Note: this
+  // accounts for both named and indexed properties on Arrays.
+  } else {
+    return objEquiv(actual, expected);
+  }
+}
+
+function isArguments(object) {
+  return Object.prototype.toString.call(object) == '[object Arguments]';
+}
+
+function objEquiv(a, b) {
+  if (util.isNullOrUndefined(a) || util.isNullOrUndefined(b))
+    return false;
+  // an identical 'prototype' property.
+  if (a.prototype !== b.prototype) return false;
+  //~~~I've managed to break Object.keys through screwy arguments passing.
+  //   Converting to array solves the problem.
+  if (isArguments(a)) {
+    if (!isArguments(b)) {
+      return false;
+    }
+    a = pSlice.call(a);
+    b = pSlice.call(b);
+    return _deepEqual(a, b);
+  }
+  try {
+    var ka = objectKeys(a),
+        kb = objectKeys(b),
+        key, i;
+  } catch (e) {//happens when one is a string literal and the other isn't
+    return false;
+  }
+  // having the same number of owned properties (keys incorporates
+  // hasOwnProperty)
+  if (ka.length != kb.length)
+    return false;
+  //the same set of keys (although not necessarily the same order),
+  ka.sort();
+  kb.sort();
+  //~~~cheap key test
+  for (i = ka.length - 1; i >= 0; i--) {
+    if (ka[i] != kb[i])
+      return false;
+  }
+  //equivalent values for every corresponding key, and
+  //~~~possibly expensive deep test
+  for (i = ka.length - 1; i >= 0; i--) {
+    key = ka[i];
+    if (!_deepEqual(a[key], b[key])) return false;
+  }
+  return true;
+}
+
+// 8. The non-equivalence assertion tests for any deep inequality.
+// assert.notDeepEqual(actual, expected, message_opt);
+
+assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
+  if (_deepEqual(actual, expected)) {
+    fail(actual, expected, message, 'notDeepEqual', assert.notDeepEqual);
+  }
+};
+
+// 9. The strict equality assertion tests strict equality, as determined by ===.
+// assert.strictEqual(actual, expected, message_opt);
+
+assert.strictEqual = function strictEqual(actual, expected, message) {
+  if (actual !== expected) {
+    fail(actual, expected, message, '===', assert.strictEqual);
+  }
+};
+
+// 10. The strict non-equality assertion tests for strict inequality, as
+// determined by !==.  assert.notStrictEqual(actual, expected, message_opt);
+
+assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
+  if (actual === expected) {
+    fail(actual, expected, message, '!==', assert.notStrictEqual);
+  }
+};
+
+function expectedException(actual, expected) {
+  if (!actual || !expected) {
+    return false;
+  }
+
+  if (Object.prototype.toString.call(expected) == '[object RegExp]') {
+    return expected.test(actual);
+  } else if (actual instanceof expected) {
+    return true;
+  } else if (expected.call({}, actual) === true) {
+    return true;
+  }
+
+  return false;
+}
+
+function _throws(shouldThrow, block, expected, message) {
+  var actual;
+
+  if (util.isString(expected)) {
+    message = expected;
+    expected = null;
+  }
+
+  try {
+    block();
+  } catch (e) {
+    actual = e;
+  }
+
+  message = (expected && expected.name ? ' (' + expected.name + ').' : '.') +
+            (message ? ' ' + message : '.');
+
+  if (shouldThrow && !actual) {
+    fail(actual, expected, 'Missing expected exception' + message);
+  }
+
+  if (!shouldThrow && expectedException(actual, expected)) {
+    fail(actual, expected, 'Got unwanted exception' + message);
+  }
+
+  if ((shouldThrow && actual && expected &&
+      !expectedException(actual, expected)) || (!shouldThrow && actual)) {
+    throw actual;
+  }
+}
+
+// 11. Expected to throw an error:
+// assert.throws(block, Error_opt, message_opt);
+
+assert.throws = function(block, /*optional*/error, /*optional*/message) {
+  _throws.apply(this, [true].concat(pSlice.call(arguments)));
+};
+
+// EXTENSION! This is annoying to write outside this module.
+assert.doesNotThrow = function(block, /*optional*/message) {
+  _throws.apply(this, [false].concat(pSlice.call(arguments)));
+};
+
+assert.ifError = function(err) { if (err) {throw err;}};
+
+var objectKeys = Object.keys || function (obj) {
+  var keys = [];
+  for (var key in obj) {
+    if (hasOwn.call(obj, key)) keys.push(key);
+  }
+  return keys;
+};
+
+},{"util/":11}],3:[function(require,module,exports){
+if (typeof Object.create === 'function') {
+  // implementation from standard node.js 'util' module
+  module.exports = function inherits(ctor, superCtor) {
+    ctor.super_ = superCtor
+    ctor.prototype = Object.create(superCtor.prototype, {
+      constructor: {
+        value: ctor,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      }
+    });
+  };
+} else {
+  // old school shim for old browsers
+  module.exports = function inherits(ctor, superCtor) {
+    ctor.super_ = superCtor
+    var TempCtor = function () {}
+    TempCtor.prototype = superCtor.prototype
+    ctor.prototype = new TempCtor()
+    ctor.prototype.constructor = ctor
+  }
+}
+
+},{}],4:[function(require,module,exports){
+// shim for using process in browser
+
+var process = module.exports = {};
+
+process.nextTick = (function () {
+    var canSetImmediate = typeof window !== 'undefined'
+    && window.setImmediate;
+    var canMutationObserver = typeof window !== 'undefined'
+    && window.MutationObserver;
+    var canPost = typeof window !== 'undefined'
+    && window.postMessage && window.addEventListener
+    ;
+
+    if (canSetImmediate) {
+        return function (f) { return window.setImmediate(f) };
+    }
+
+    var queue = [];
+
+    if (canMutationObserver) {
+        var hiddenDiv = document.createElement("div");
+        var observer = new MutationObserver(function () {
+            var queueList = queue.slice();
+            queue.length = 0;
+            queueList.forEach(function (fn) {
+                fn();
+            });
+        });
+
+        observer.observe(hiddenDiv, { attributes: true });
+
+        return function nextTick(fn) {
+            if (!queue.length) {
+                hiddenDiv.setAttribute('yes', 'no');
+            }
+            queue.push(fn);
+        };
+    }
+
+    if (canPost) {
+        window.addEventListener('message', function (ev) {
+            var source = ev.source;
+            if ((source === window || source === null) && ev.data === 'process-tick') {
+                ev.stopPropagation();
+                if (queue.length > 0) {
+                    var fn = queue.shift();
+                    fn();
+                }
+            }
+        }, true);
+
+        return function nextTick(fn) {
+            queue.push(fn);
+            window.postMessage('process-tick', '*');
+        };
+    }
+
+    return function nextTick(fn) {
+        setTimeout(fn, 0);
+    };
+})();
+
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+// TODO(shtylman)
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+
+},{}],5:[function(require,module,exports){
 (function (global){
 /*! http://mths.be/punycode v1.2.4 by @mathias */
 ;(function(root) {
@@ -1049,7 +1709,7 @@ function extend(source, distention) {
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],3:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -1135,7 +1795,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],4:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -1222,13 +1882,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],5:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":3,"./encode":4}],6:[function(require,module,exports){
+},{"./decode":6,"./encode":7}],9:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -1937,1378 +2597,601 @@ function isNullOrUndefined(arg) {
   return  arg == null;
 }
 
-},{"punycode":2,"querystring":5}],7:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var baseClone = require('lodash._baseclone'),
-    baseCreateCallback = require('lodash._basecreatecallback');
+},{"punycode":5,"querystring":8}],10:[function(require,module,exports){
+module.exports = function isBuffer(arg) {
+  return arg && typeof arg === 'object'
+    && typeof arg.copy === 'function'
+    && typeof arg.fill === 'function'
+    && typeof arg.readUInt8 === 'function';
+}
+},{}],11:[function(require,module,exports){
+(function (process,global){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var formatRegExp = /%[sdj%]/g;
+exports.format = function(f) {
+  if (!isString(f)) {
+    var objects = [];
+    for (var i = 0; i < arguments.length; i++) {
+      objects.push(inspect(arguments[i]));
+    }
+    return objects.join(' ');
+  }
+
+  var i = 1;
+  var args = arguments;
+  var len = args.length;
+  var str = String(f).replace(formatRegExp, function(x) {
+    if (x === '%%') return '%';
+    if (i >= len) return x;
+    switch (x) {
+      case '%s': return String(args[i++]);
+      case '%d': return Number(args[i++]);
+      case '%j':
+        try {
+          return JSON.stringify(args[i++]);
+        } catch (_) {
+          return '[Circular]';
+        }
+      default:
+        return x;
+    }
+  });
+  for (var x = args[i]; i < len; x = args[++i]) {
+    if (isNull(x) || !isObject(x)) {
+      str += ' ' + x;
+    } else {
+      str += ' ' + inspect(x);
+    }
+  }
+  return str;
+};
+
+
+// Mark that a method should not be used.
+// Returns a modified function which warns once by default.
+// If --no-deprecation is set, then it is a no-op.
+exports.deprecate = function(fn, msg) {
+  // Allow for deprecating things in the process of starting up.
+  if (isUndefined(global.process)) {
+    return function() {
+      return exports.deprecate(fn, msg).apply(this, arguments);
+    };
+  }
+
+  if (process.noDeprecation === true) {
+    return fn;
+  }
+
+  var warned = false;
+  function deprecated() {
+    if (!warned) {
+      if (process.throwDeprecation) {
+        throw new Error(msg);
+      } else if (process.traceDeprecation) {
+        console.trace(msg);
+      } else {
+        console.error(msg);
+      }
+      warned = true;
+    }
+    return fn.apply(this, arguments);
+  }
+
+  return deprecated;
+};
+
+
+var debugs = {};
+var debugEnviron;
+exports.debuglog = function(set) {
+  if (isUndefined(debugEnviron))
+    debugEnviron = process.env.NODE_DEBUG || '';
+  set = set.toUpperCase();
+  if (!debugs[set]) {
+    if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
+      var pid = process.pid;
+      debugs[set] = function() {
+        var msg = exports.format.apply(exports, arguments);
+        console.error('%s %d: %s', set, pid, msg);
+      };
+    } else {
+      debugs[set] = function() {};
+    }
+  }
+  return debugs[set];
+};
+
 
 /**
- * Creates a deep clone of `value`. If a callback is provided it will be
- * executed to produce the cloned values. If the callback returns `undefined`
- * cloning will be handled by the method instead. The callback is bound to
- * `thisArg` and invoked with one argument; (value).
+ * Echos the value of a value. Trys to print the value out
+ * in the best way possible given the different types.
  *
- * Note: This method is loosely based on the structured clone algorithm. Functions
- * and DOM nodes are **not** cloned. The enumerable properties of `arguments` objects and
- * objects created by constructors other than `Object` are cloned to plain `Object` objects.
- * See http://www.w3.org/TR/html5/infrastructure.html#internal-structured-cloning-algorithm.
- *
- * @static
- * @memberOf _
- * @category Objects
- * @param {*} value The value to deep clone.
- * @param {Function} [callback] The function to customize cloning values.
- * @param {*} [thisArg] The `this` binding of `callback`.
- * @returns {*} Returns the deep cloned value.
- * @example
- *
- * var characters = [
- *   { 'name': 'barney', 'age': 36 },
- *   { 'name': 'fred',   'age': 40 }
- * ];
- *
- * var deep = _.cloneDeep(characters);
- * deep[0] === characters[0];
- * // => false
- *
- * var view = {
- *   'label': 'docs',
- *   'node': element
- * };
- *
- * var clone = _.cloneDeep(view, function(value) {
- *   return _.isElement(value) ? value.cloneNode(true) : undefined;
- * });
- *
- * clone.node == view.node;
- * // => false
+ * @param {Object} obj The object to print out.
+ * @param {Object} opts Optional options object that alters the output.
  */
-function cloneDeep(value, callback, thisArg) {
-  return baseClone(value, true, typeof callback == 'function' && baseCreateCallback(callback, thisArg, 1));
+/* legacy: obj, showHidden, depth, colors*/
+function inspect(obj, opts) {
+  // default options
+  var ctx = {
+    seen: [],
+    stylize: stylizeNoColor
+  };
+  // legacy...
+  if (arguments.length >= 3) ctx.depth = arguments[2];
+  if (arguments.length >= 4) ctx.colors = arguments[3];
+  if (isBoolean(opts)) {
+    // legacy...
+    ctx.showHidden = opts;
+  } else if (opts) {
+    // got an "options" object
+    exports._extend(ctx, opts);
+  }
+  // set default options
+  if (isUndefined(ctx.showHidden)) ctx.showHidden = false;
+  if (isUndefined(ctx.depth)) ctx.depth = 2;
+  if (isUndefined(ctx.colors)) ctx.colors = false;
+  if (isUndefined(ctx.customInspect)) ctx.customInspect = true;
+  if (ctx.colors) ctx.stylize = stylizeWithColor;
+  return formatValue(ctx, obj, ctx.depth);
+}
+exports.inspect = inspect;
+
+
+// http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
+inspect.colors = {
+  'bold' : [1, 22],
+  'italic' : [3, 23],
+  'underline' : [4, 24],
+  'inverse' : [7, 27],
+  'white' : [37, 39],
+  'grey' : [90, 39],
+  'black' : [30, 39],
+  'blue' : [34, 39],
+  'cyan' : [36, 39],
+  'green' : [32, 39],
+  'magenta' : [35, 39],
+  'red' : [31, 39],
+  'yellow' : [33, 39]
+};
+
+// Don't use 'blue' not visible on cmd.exe
+inspect.styles = {
+  'special': 'cyan',
+  'number': 'yellow',
+  'boolean': 'yellow',
+  'undefined': 'grey',
+  'null': 'bold',
+  'string': 'green',
+  'date': 'magenta',
+  // "name": intentionally not styling
+  'regexp': 'red'
+};
+
+
+function stylizeWithColor(str, styleType) {
+  var style = inspect.styles[styleType];
+
+  if (style) {
+    return '\u001b[' + inspect.colors[style][0] + 'm' + str +
+           '\u001b[' + inspect.colors[style][1] + 'm';
+  } else {
+    return str;
+  }
 }
 
-module.exports = cloneDeep;
 
-},{"lodash._baseclone":8,"lodash._basecreatecallback":30}],8:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var assign = require('lodash.assign'),
-    forEach = require('lodash.foreach'),
-    forOwn = require('lodash.forown'),
-    getArray = require('lodash._getarray'),
-    isArray = require('lodash.isarray'),
-    isObject = require('lodash.isobject'),
-    releaseArray = require('lodash._releasearray'),
-    slice = require('lodash._slice');
+function stylizeNoColor(str, styleType) {
+  return str;
+}
 
-/** Used to match regexp flags from their coerced string values */
-var reFlags = /\w*$/;
 
-/** `Object#toString` result shortcuts */
-var argsClass = '[object Arguments]',
-    arrayClass = '[object Array]',
-    boolClass = '[object Boolean]',
-    dateClass = '[object Date]',
-    funcClass = '[object Function]',
-    numberClass = '[object Number]',
-    objectClass = '[object Object]',
-    regexpClass = '[object RegExp]',
-    stringClass = '[object String]';
+function arrayToHash(array) {
+  var hash = {};
 
-/** Used to identify object classifications that `_.clone` supports */
-var cloneableClasses = {};
-cloneableClasses[funcClass] = false;
-cloneableClasses[argsClass] = cloneableClasses[arrayClass] =
-cloneableClasses[boolClass] = cloneableClasses[dateClass] =
-cloneableClasses[numberClass] = cloneableClasses[objectClass] =
-cloneableClasses[regexpClass] = cloneableClasses[stringClass] = true;
-
-/** Used for native method references */
-var objectProto = Object.prototype;
-
-/** Used to resolve the internal [[Class]] of values */
-var toString = objectProto.toString;
-
-/** Native method shortcuts */
-var hasOwnProperty = objectProto.hasOwnProperty;
-
-/** Used to lookup a built-in constructor by [[Class]] */
-var ctorByClass = {};
-ctorByClass[arrayClass] = Array;
-ctorByClass[boolClass] = Boolean;
-ctorByClass[dateClass] = Date;
-ctorByClass[funcClass] = Function;
-ctorByClass[objectClass] = Object;
-ctorByClass[numberClass] = Number;
-ctorByClass[regexpClass] = RegExp;
-ctorByClass[stringClass] = String;
-
-/**
- * The base implementation of `_.clone` without argument juggling or support
- * for `thisArg` binding.
- *
- * @private
- * @param {*} value The value to clone.
- * @param {boolean} [isDeep=false] Specify a deep clone.
- * @param {Function} [callback] The function to customize cloning values.
- * @param {Array} [stackA=[]] Tracks traversed source objects.
- * @param {Array} [stackB=[]] Associates clones with source counterparts.
- * @returns {*} Returns the cloned value.
- */
-function baseClone(value, isDeep, callback, stackA, stackB) {
-  if (callback) {
-    var result = callback(value);
-    if (typeof result != 'undefined') {
-      return result;
-    }
-  }
-  // inspect [[Class]]
-  var isObj = isObject(value);
-  if (isObj) {
-    var className = toString.call(value);
-    if (!cloneableClasses[className]) {
-      return value;
-    }
-    var ctor = ctorByClass[className];
-    switch (className) {
-      case boolClass:
-      case dateClass:
-        return new ctor(+value);
-
-      case numberClass:
-      case stringClass:
-        return new ctor(value);
-
-      case regexpClass:
-        result = ctor(value.source, reFlags.exec(value));
-        result.lastIndex = value.lastIndex;
-        return result;
-    }
-  } else {
-    return value;
-  }
-  var isArr = isArray(value);
-  if (isDeep) {
-    // check for circular references and return corresponding clone
-    var initedStack = !stackA;
-    stackA || (stackA = getArray());
-    stackB || (stackB = getArray());
-
-    var length = stackA.length;
-    while (length--) {
-      if (stackA[length] == value) {
-        return stackB[length];
-      }
-    }
-    result = isArr ? ctor(value.length) : {};
-  }
-  else {
-    result = isArr ? slice(value) : assign({}, value);
-  }
-  // add array properties assigned by `RegExp#exec`
-  if (isArr) {
-    if (hasOwnProperty.call(value, 'index')) {
-      result.index = value.index;
-    }
-    if (hasOwnProperty.call(value, 'input')) {
-      result.input = value.input;
-    }
-  }
-  // exit for shallow clone
-  if (!isDeep) {
-    return result;
-  }
-  // add the source value to the stack of traversed objects
-  // and associate it with its clone
-  stackA.push(value);
-  stackB.push(result);
-
-  // recursively populate clone (susceptible to call stack limits)
-  (isArr ? forEach : forOwn)(value, function(objValue, key) {
-    result[key] = baseClone(objValue, isDeep, callback, stackA, stackB);
+  array.forEach(function(val, idx) {
+    hash[val] = true;
   });
 
-  if (initedStack) {
-    releaseArray(stackA);
-    releaseArray(stackB);
-  }
-  return result;
+  return hash;
 }
 
-module.exports = baseClone;
 
-},{"lodash._getarray":9,"lodash._releasearray":11,"lodash._slice":14,"lodash.assign":15,"lodash.foreach":20,"lodash.forown":21,"lodash.isarray":26,"lodash.isobject":28}],9:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var arrayPool = require('lodash._arraypool');
-
-/**
- * Gets an array from the array pool or creates a new one if the pool is empty.
- *
- * @private
- * @returns {Array} The array from the pool.
- */
-function getArray() {
-  return arrayPool.pop() || [];
-}
-
-module.exports = getArray;
-
-},{"lodash._arraypool":10}],10:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-
-/** Used to pool arrays and objects used internally */
-var arrayPool = [];
-
-module.exports = arrayPool;
-
-},{}],11:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var arrayPool = require('lodash._arraypool'),
-    maxPoolSize = require('lodash._maxpoolsize');
-
-/**
- * Releases the given array back to the array pool.
- *
- * @private
- * @param {Array} [array] The array to release.
- */
-function releaseArray(array) {
-  array.length = 0;
-  if (arrayPool.length < maxPoolSize) {
-    arrayPool.push(array);
-  }
-}
-
-module.exports = releaseArray;
-
-},{"lodash._arraypool":12,"lodash._maxpoolsize":13}],12:[function(require,module,exports){
-module.exports=require(10)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash._getarray/node_modules/lodash._arraypool/index.js":10}],13:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-
-/** Used as the max size of the `arrayPool` and `objectPool` */
-var maxPoolSize = 40;
-
-module.exports = maxPoolSize;
-
-},{}],14:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-
-/**
- * Slices the `collection` from the `start` index up to, but not including,
- * the `end` index.
- *
- * Note: This function is used instead of `Array#slice` to support node lists
- * in IE < 9 and to ensure dense arrays are returned.
- *
- * @private
- * @param {Array|Object|string} collection The collection to slice.
- * @param {number} start The start index.
- * @param {number} end The end index.
- * @returns {Array} Returns the new array.
- */
-function slice(array, start, end) {
-  start || (start = 0);
-  if (typeof end == 'undefined') {
-    end = array ? array.length : 0;
-  }
-  var index = -1,
-      length = end - start || 0,
-      result = Array(length < 0 ? 0 : length);
-
-  while (++index < length) {
-    result[index] = array[start + index];
-  }
-  return result;
-}
-
-module.exports = slice;
-
-},{}],15:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var baseCreateCallback = require('lodash._basecreatecallback'),
-    keys = require('lodash.keys'),
-    objectTypes = require('lodash._objecttypes');
-
-/**
- * Assigns own enumerable properties of source object(s) to the destination
- * object. Subsequent sources will overwrite property assignments of previous
- * sources. If a callback is provided it will be executed to produce the
- * assigned values. The callback is bound to `thisArg` and invoked with two
- * arguments; (objectValue, sourceValue).
- *
- * @static
- * @memberOf _
- * @type Function
- * @alias extend
- * @category Objects
- * @param {Object} object The destination object.
- * @param {...Object} [source] The source objects.
- * @param {Function} [callback] The function to customize assigning values.
- * @param {*} [thisArg] The `this` binding of `callback`.
- * @returns {Object} Returns the destination object.
- * @example
- *
- * _.assign({ 'name': 'fred' }, { 'employer': 'slate' });
- * // => { 'name': 'fred', 'employer': 'slate' }
- *
- * var defaults = _.partialRight(_.assign, function(a, b) {
- *   return typeof a == 'undefined' ? b : a;
- * });
- *
- * var object = { 'name': 'barney' };
- * defaults(object, { 'name': 'fred', 'employer': 'slate' });
- * // => { 'name': 'barney', 'employer': 'slate' }
- */
-var assign = function(object, source, guard) {
-  var index, iterable = object, result = iterable;
-  if (!iterable) return result;
-  var args = arguments,
-      argsIndex = 0,
-      argsLength = typeof guard == 'number' ? 2 : args.length;
-  if (argsLength > 3 && typeof args[argsLength - 2] == 'function') {
-    var callback = baseCreateCallback(args[--argsLength - 1], args[argsLength--], 2);
-  } else if (argsLength > 2 && typeof args[argsLength - 1] == 'function') {
-    callback = args[--argsLength];
-  }
-  while (++argsIndex < argsLength) {
-    iterable = args[argsIndex];
-    if (iterable && objectTypes[typeof iterable]) {
-    var ownIndex = -1,
-        ownProps = objectTypes[typeof iterable] && keys(iterable),
-        length = ownProps ? ownProps.length : 0;
-
-    while (++ownIndex < length) {
-      index = ownProps[ownIndex];
-      result[index] = callback ? callback(result[index], iterable[index]) : iterable[index];
+function formatValue(ctx, value, recurseTimes) {
+  // Provide a hook for user-specified inspect functions.
+  // Check that value is an object with an inspect function on it
+  if (ctx.customInspect &&
+      value &&
+      isFunction(value.inspect) &&
+      // Filter out the util module, it's inspect function is special
+      value.inspect !== exports.inspect &&
+      // Also filter out any prototype objects using the circular check.
+      !(value.constructor && value.constructor.prototype === value)) {
+    var ret = value.inspect(recurseTimes, ctx);
+    if (!isString(ret)) {
+      ret = formatValue(ctx, ret, recurseTimes);
     }
+    return ret;
+  }
+
+  // Primitive types cannot have properties
+  var primitive = formatPrimitive(ctx, value);
+  if (primitive) {
+    return primitive;
+  }
+
+  // Look up the keys of the object.
+  var keys = Object.keys(value);
+  var visibleKeys = arrayToHash(keys);
+
+  if (ctx.showHidden) {
+    keys = Object.getOwnPropertyNames(value);
+  }
+
+  // IE doesn't make error fields non-enumerable
+  // http://msdn.microsoft.com/en-us/library/ie/dww52sbt(v=vs.94).aspx
+  if (isError(value)
+      && (keys.indexOf('message') >= 0 || keys.indexOf('description') >= 0)) {
+    return formatError(value);
+  }
+
+  // Some type of object without properties can be shortcutted.
+  if (keys.length === 0) {
+    if (isFunction(value)) {
+      var name = value.name ? ': ' + value.name : '';
+      return ctx.stylize('[Function' + name + ']', 'special');
+    }
+    if (isRegExp(value)) {
+      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
+    }
+    if (isDate(value)) {
+      return ctx.stylize(Date.prototype.toString.call(value), 'date');
+    }
+    if (isError(value)) {
+      return formatError(value);
     }
   }
-  return result
-};
 
-module.exports = assign;
+  var base = '', array = false, braces = ['{', '}'];
 
-},{"lodash._basecreatecallback":30,"lodash._objecttypes":16,"lodash.keys":17}],16:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-
-/** Used to determine if values are of the language type Object */
-var objectTypes = {
-  'boolean': false,
-  'function': true,
-  'object': true,
-  'number': false,
-  'string': false,
-  'undefined': false
-};
-
-module.exports = objectTypes;
-
-},{}],17:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var isNative = require('lodash._isnative'),
-    isObject = require('lodash.isobject'),
-    shimKeys = require('lodash._shimkeys');
-
-/* Native method shortcuts for methods with the same name as other `lodash` methods */
-var nativeKeys = isNative(nativeKeys = Object.keys) && nativeKeys;
-
-/**
- * Creates an array composed of the own enumerable property names of an object.
- *
- * @static
- * @memberOf _
- * @category Objects
- * @param {Object} object The object to inspect.
- * @returns {Array} Returns an array of property names.
- * @example
- *
- * _.keys({ 'one': 1, 'two': 2, 'three': 3 });
- * // => ['one', 'two', 'three'] (property order is not guaranteed across environments)
- */
-var keys = !nativeKeys ? shimKeys : function(object) {
-  if (!isObject(object)) {
-    return [];
+  // Make Array say that they are Array
+  if (isArray(value)) {
+    array = true;
+    braces = ['[', ']'];
   }
-  return nativeKeys(object);
-};
 
-module.exports = keys;
+  // Make functions say that they are functions
+  if (isFunction(value)) {
+    var n = value.name ? ': ' + value.name : '';
+    base = ' [Function' + n + ']';
+  }
 
-},{"lodash._isnative":18,"lodash._shimkeys":19,"lodash.isobject":28}],18:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
+  // Make RegExps say that they are RegExps
+  if (isRegExp(value)) {
+    base = ' ' + RegExp.prototype.toString.call(value);
+  }
 
-/** Used for native method references */
-var objectProto = Object.prototype;
+  // Make dates with properties first say the date
+  if (isDate(value)) {
+    base = ' ' + Date.prototype.toUTCString.call(value);
+  }
 
-/** Used to resolve the internal [[Class]] of values */
-var toString = objectProto.toString;
+  // Make error with message first say the error
+  if (isError(value)) {
+    base = ' ' + formatError(value);
+  }
 
-/** Used to detect if a method is native */
-var reNative = RegExp('^' +
-  String(toString)
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/toString| for [^\]]+/g, '.*?') + '$'
-);
+  if (keys.length === 0 && (!array || value.length == 0)) {
+    return braces[0] + base + braces[1];
+  }
 
-/**
- * Checks if `value` is a native function.
- *
- * @private
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if the `value` is a native function, else `false`.
- */
-function isNative(value) {
-  return typeof value == 'function' && reNative.test(value);
+  if (recurseTimes < 0) {
+    if (isRegExp(value)) {
+      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
+    } else {
+      return ctx.stylize('[Object]', 'special');
+    }
+  }
+
+  ctx.seen.push(value);
+
+  var output;
+  if (array) {
+    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
+  } else {
+    output = keys.map(function(key) {
+      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
+    });
+  }
+
+  ctx.seen.pop();
+
+  return reduceToSingleString(output, base, braces);
 }
 
-module.exports = isNative;
 
-},{}],19:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var objectTypes = require('lodash._objecttypes');
+function formatPrimitive(ctx, value) {
+  if (isUndefined(value))
+    return ctx.stylize('undefined', 'undefined');
+  if (isString(value)) {
+    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
+                                             .replace(/'/g, "\\'")
+                                             .replace(/\\"/g, '"') + '\'';
+    return ctx.stylize(simple, 'string');
+  }
+  if (isNumber(value))
+    return ctx.stylize('' + value, 'number');
+  if (isBoolean(value))
+    return ctx.stylize('' + value, 'boolean');
+  // For some reason typeof null is "object", so special case here.
+  if (isNull(value))
+    return ctx.stylize('null', 'null');
+}
 
-/** Used for native method references */
-var objectProto = Object.prototype;
 
-/** Native method shortcuts */
-var hasOwnProperty = objectProto.hasOwnProperty;
+function formatError(value) {
+  return '[' + Error.prototype.toString.call(value) + ']';
+}
 
-/**
- * A fallback implementation of `Object.keys` which produces an array of the
- * given object's own enumerable property names.
- *
- * @private
- * @type Function
- * @param {Object} object The object to inspect.
- * @returns {Array} Returns an array of property names.
- */
-var shimKeys = function(object) {
-  var index, iterable = object, result = [];
-  if (!iterable) return result;
-  if (!(objectTypes[typeof object])) return result;
-    for (index in iterable) {
-      if (hasOwnProperty.call(iterable, index)) {
-        result.push(index);
-      }
+
+function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
+  var output = [];
+  for (var i = 0, l = value.length; i < l; ++i) {
+    if (hasOwnProperty(value, String(i))) {
+      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+          String(i), true));
+    } else {
+      output.push('');
     }
-  return result
-};
+  }
+  keys.forEach(function(key) {
+    if (!key.match(/^\d+$/)) {
+      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+          key, true));
+    }
+  });
+  return output;
+}
 
-module.exports = shimKeys;
 
-},{"lodash._objecttypes":16}],20:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var baseCreateCallback = require('lodash._basecreatecallback'),
-    forOwn = require('lodash.forown');
-
-/**
- * Iterates over elements of a collection, executing the callback for each
- * element. The callback is bound to `thisArg` and invoked with three arguments;
- * (value, index|key, collection). Callbacks may exit iteration early by
- * explicitly returning `false`.
- *
- * Note: As with other "Collections" methods, objects with a `length` property
- * are iterated like arrays. To avoid this behavior `_.forIn` or `_.forOwn`
- * may be used for object iteration.
- *
- * @static
- * @memberOf _
- * @alias each
- * @category Collections
- * @param {Array|Object|string} collection The collection to iterate over.
- * @param {Function} [callback=identity] The function called per iteration.
- * @param {*} [thisArg] The `this` binding of `callback`.
- * @returns {Array|Object|string} Returns `collection`.
- * @example
- *
- * _([1, 2, 3]).forEach(function(num) { console.log(num); }).join(',');
- * // => logs each number and returns '1,2,3'
- *
- * _.forEach({ 'one': 1, 'two': 2, 'three': 3 }, function(num) { console.log(num); });
- * // => logs each number and returns the object (property order is not guaranteed across environments)
- */
-function forEach(collection, callback, thisArg) {
-  var index = -1,
-      length = collection ? collection.length : 0;
-
-  callback = callback && typeof thisArg == 'undefined' ? callback : baseCreateCallback(callback, thisArg, 3);
-  if (typeof length == 'number') {
-    while (++index < length) {
-      if (callback(collection[index], index, collection) === false) {
-        break;
-      }
+function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
+  var name, str, desc;
+  desc = Object.getOwnPropertyDescriptor(value, key) || { value: value[key] };
+  if (desc.get) {
+    if (desc.set) {
+      str = ctx.stylize('[Getter/Setter]', 'special');
+    } else {
+      str = ctx.stylize('[Getter]', 'special');
     }
   } else {
-    forOwn(collection, callback);
+    if (desc.set) {
+      str = ctx.stylize('[Setter]', 'special');
+    }
   }
-  return collection;
+  if (!hasOwnProperty(visibleKeys, key)) {
+    name = '[' + key + ']';
+  }
+  if (!str) {
+    if (ctx.seen.indexOf(desc.value) < 0) {
+      if (isNull(recurseTimes)) {
+        str = formatValue(ctx, desc.value, null);
+      } else {
+        str = formatValue(ctx, desc.value, recurseTimes - 1);
+      }
+      if (str.indexOf('\n') > -1) {
+        if (array) {
+          str = str.split('\n').map(function(line) {
+            return '  ' + line;
+          }).join('\n').substr(2);
+        } else {
+          str = '\n' + str.split('\n').map(function(line) {
+            return '   ' + line;
+          }).join('\n');
+        }
+      }
+    } else {
+      str = ctx.stylize('[Circular]', 'special');
+    }
+  }
+  if (isUndefined(name)) {
+    if (array && key.match(/^\d+$/)) {
+      return str;
+    }
+    name = JSON.stringify('' + key);
+    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
+      name = name.substr(1, name.length - 2);
+      name = ctx.stylize(name, 'name');
+    } else {
+      name = name.replace(/'/g, "\\'")
+                 .replace(/\\"/g, '"')
+                 .replace(/(^"|"$)/g, "'");
+      name = ctx.stylize(name, 'string');
+    }
+  }
+
+  return name + ': ' + str;
 }
 
-module.exports = forEach;
 
-},{"lodash._basecreatecallback":30,"lodash.forown":21}],21:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var baseCreateCallback = require('lodash._basecreatecallback'),
-    keys = require('lodash.keys'),
-    objectTypes = require('lodash._objecttypes');
+function reduceToSingleString(output, base, braces) {
+  var numLinesEst = 0;
+  var length = output.reduce(function(prev, cur) {
+    numLinesEst++;
+    if (cur.indexOf('\n') >= 0) numLinesEst++;
+    return prev + cur.replace(/\u001b\[\d\d?m/g, '').length + 1;
+  }, 0);
 
-/**
- * Iterates over own enumerable properties of an object, executing the callback
- * for each property. The callback is bound to `thisArg` and invoked with three
- * arguments; (value, key, object). Callbacks may exit iteration early by
- * explicitly returning `false`.
- *
- * @static
- * @memberOf _
- * @type Function
- * @category Objects
- * @param {Object} object The object to iterate over.
- * @param {Function} [callback=identity] The function called per iteration.
- * @param {*} [thisArg] The `this` binding of `callback`.
- * @returns {Object} Returns `object`.
- * @example
- *
- * _.forOwn({ '0': 'zero', '1': 'one', 'length': 2 }, function(num, key) {
- *   console.log(key);
- * });
- * // => logs '0', '1', and 'length' (property order is not guaranteed across environments)
- */
-var forOwn = function(collection, callback, thisArg) {
-  var index, iterable = collection, result = iterable;
-  if (!iterable) return result;
-  if (!objectTypes[typeof iterable]) return result;
-  callback = callback && typeof thisArg == 'undefined' ? callback : baseCreateCallback(callback, thisArg, 3);
-    var ownIndex = -1,
-        ownProps = objectTypes[typeof iterable] && keys(iterable),
-        length = ownProps ? ownProps.length : 0;
+  if (length > 60) {
+    return braces[0] +
+           (base === '' ? '' : base + '\n ') +
+           ' ' +
+           output.join(',\n  ') +
+           ' ' +
+           braces[1];
+  }
 
-    while (++ownIndex < length) {
-      index = ownProps[ownIndex];
-      if (callback(iterable[index], index, collection) === false) return result;
-    }
-  return result
+  return braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
+}
+
+
+// NOTE: These type checking functions intentionally don't use `instanceof`
+// because it is fragile and can be easily faked with `Object.create()`.
+function isArray(ar) {
+  return Array.isArray(ar);
+}
+exports.isArray = isArray;
+
+function isBoolean(arg) {
+  return typeof arg === 'boolean';
+}
+exports.isBoolean = isBoolean;
+
+function isNull(arg) {
+  return arg === null;
+}
+exports.isNull = isNull;
+
+function isNullOrUndefined(arg) {
+  return arg == null;
+}
+exports.isNullOrUndefined = isNullOrUndefined;
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+exports.isNumber = isNumber;
+
+function isString(arg) {
+  return typeof arg === 'string';
+}
+exports.isString = isString;
+
+function isSymbol(arg) {
+  return typeof arg === 'symbol';
+}
+exports.isSymbol = isSymbol;
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+exports.isUndefined = isUndefined;
+
+function isRegExp(re) {
+  return isObject(re) && objectToString(re) === '[object RegExp]';
+}
+exports.isRegExp = isRegExp;
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+exports.isObject = isObject;
+
+function isDate(d) {
+  return isObject(d) && objectToString(d) === '[object Date]';
+}
+exports.isDate = isDate;
+
+function isError(e) {
+  return isObject(e) &&
+      (objectToString(e) === '[object Error]' || e instanceof Error);
+}
+exports.isError = isError;
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+exports.isFunction = isFunction;
+
+function isPrimitive(arg) {
+  return arg === null ||
+         typeof arg === 'boolean' ||
+         typeof arg === 'number' ||
+         typeof arg === 'string' ||
+         typeof arg === 'symbol' ||  // ES6 symbol
+         typeof arg === 'undefined';
+}
+exports.isPrimitive = isPrimitive;
+
+exports.isBuffer = require('./support/isBuffer');
+
+function objectToString(o) {
+  return Object.prototype.toString.call(o);
+}
+
+
+function pad(n) {
+  return n < 10 ? '0' + n.toString(10) : n.toString(10);
+}
+
+
+var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+              'Oct', 'Nov', 'Dec'];
+
+// 26 Feb 16:19:34
+function timestamp() {
+  var d = new Date();
+  var time = [pad(d.getHours()),
+              pad(d.getMinutes()),
+              pad(d.getSeconds())].join(':');
+  return [d.getDate(), months[d.getMonth()], time].join(' ');
+}
+
+
+// log is just a thin wrapper to console.log that prepends a timestamp
+exports.log = function() {
+  console.log('%s - %s', timestamp(), exports.format.apply(exports, arguments));
 };
 
-module.exports = forOwn;
-
-},{"lodash._basecreatecallback":30,"lodash._objecttypes":22,"lodash.keys":23}],22:[function(require,module,exports){
-module.exports=require(16)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash._objecttypes/index.js":16}],23:[function(require,module,exports){
-module.exports=require(17)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/index.js":17,"lodash._isnative":24,"lodash._shimkeys":25,"lodash.isobject":28}],24:[function(require,module,exports){
-module.exports=require(18)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/node_modules/lodash._isnative/index.js":18}],25:[function(require,module,exports){
-module.exports=require(19)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/node_modules/lodash._shimkeys/index.js":19,"lodash._objecttypes":22}],26:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var isNative = require('lodash._isnative');
-
-/** `Object#toString` result shortcuts */
-var arrayClass = '[object Array]';
-
-/** Used for native method references */
-var objectProto = Object.prototype;
-
-/** Used to resolve the internal [[Class]] of values */
-var toString = objectProto.toString;
-
-/* Native method shortcuts for methods with the same name as other `lodash` methods */
-var nativeIsArray = isNative(nativeIsArray = Array.isArray) && nativeIsArray;
 
 /**
- * Checks if `value` is an array.
+ * Inherit the prototype methods from one constructor into another.
  *
- * @static
- * @memberOf _
- * @type Function
- * @category Objects
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if the `value` is an array, else `false`.
- * @example
+ * The Function.prototype.inherits from lang.js rewritten as a standalone
+ * function (not on Function.prototype). NOTE: If this file is to be loaded
+ * during bootstrapping this function needs to be rewritten using some native
+ * functions as prototype setup using normal JavaScript does not work as
+ * expected during bootstrapping (see mirror.js in r114903).
  *
- * (function() { return _.isArray(arguments); })();
- * // => false
- *
- * _.isArray([1, 2, 3]);
- * // => true
+ * @param {function} ctor Constructor function which needs to inherit the
+ *     prototype.
+ * @param {function} superCtor Constructor function to inherit prototype from.
  */
-var isArray = nativeIsArray || function(value) {
-  return value && typeof value == 'object' && typeof value.length == 'number' &&
-    toString.call(value) == arrayClass || false;
+exports.inherits = require('inherits');
+
+exports._extend = function(origin, add) {
+  // Don't do anything if add isn't an object
+  if (!add || !isObject(add)) return origin;
+
+  var keys = Object.keys(add);
+  var i = keys.length;
+  while (i--) {
+    origin[keys[i]] = add[keys[i]];
+  }
+  return origin;
 };
 
-module.exports = isArray;
-
-},{"lodash._isnative":27}],27:[function(require,module,exports){
-module.exports=require(18)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/node_modules/lodash._isnative/index.js":18}],28:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var objectTypes = require('lodash._objecttypes');
-
-/**
- * Checks if `value` is the language type of Object.
- * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * @static
- * @memberOf _
- * @category Objects
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if the `value` is an object, else `false`.
- * @example
- *
- * _.isObject({});
- * // => true
- *
- * _.isObject([1, 2, 3]);
- * // => true
- *
- * _.isObject(1);
- * // => false
- */
-function isObject(value) {
-  // check if the value is the ECMAScript language type of Object
-  // http://es5.github.io/#x8
-  // and avoid a V8 bug
-  // http://code.google.com/p/v8/issues/detail?id=2291
-  return !!(value && objectTypes[typeof value]);
+function hasOwnProperty(obj, prop) {
+  return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-module.exports = isObject;
-
-},{"lodash._objecttypes":29}],29:[function(require,module,exports){
-module.exports=require(16)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash._objecttypes/index.js":16}],30:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var bind = require('lodash.bind'),
-    identity = require('lodash.identity'),
-    setBindData = require('lodash._setbinddata'),
-    support = require('lodash.support');
-
-/** Used to detected named functions */
-var reFuncName = /^\s*function[ \n\r\t]+\w/;
-
-/** Used to detect functions containing a `this` reference */
-var reThis = /\bthis\b/;
-
-/** Native method shortcuts */
-var fnToString = Function.prototype.toString;
-
-/**
- * The base implementation of `_.createCallback` without support for creating
- * "_.pluck" or "_.where" style callbacks.
- *
- * @private
- * @param {*} [func=identity] The value to convert to a callback.
- * @param {*} [thisArg] The `this` binding of the created callback.
- * @param {number} [argCount] The number of arguments the callback accepts.
- * @returns {Function} Returns a callback function.
- */
-function baseCreateCallback(func, thisArg, argCount) {
-  if (typeof func != 'function') {
-    return identity;
-  }
-  // exit early for no `thisArg` or already bound by `Function#bind`
-  if (typeof thisArg == 'undefined' || !('prototype' in func)) {
-    return func;
-  }
-  var bindData = func.__bindData__;
-  if (typeof bindData == 'undefined') {
-    if (support.funcNames) {
-      bindData = !func.name;
-    }
-    bindData = bindData || !support.funcDecomp;
-    if (!bindData) {
-      var source = fnToString.call(func);
-      if (!support.funcNames) {
-        bindData = !reFuncName.test(source);
-      }
-      if (!bindData) {
-        // checks if `func` references the `this` keyword and stores the result
-        bindData = reThis.test(source);
-        setBindData(func, bindData);
-      }
-    }
-  }
-  // exit early if there are no `this` references or `func` is bound
-  if (bindData === false || (bindData !== true && bindData[1] & 1)) {
-    return func;
-  }
-  switch (argCount) {
-    case 1: return function(value) {
-      return func.call(thisArg, value);
-    };
-    case 2: return function(a, b) {
-      return func.call(thisArg, a, b);
-    };
-    case 3: return function(value, index, collection) {
-      return func.call(thisArg, value, index, collection);
-    };
-    case 4: return function(accumulator, value, index, collection) {
-      return func.call(thisArg, accumulator, value, index, collection);
-    };
-  }
-  return bind(func, thisArg);
-}
-
-module.exports = baseCreateCallback;
-
-},{"lodash._setbinddata":31,"lodash.bind":34,"lodash.identity":50,"lodash.support":51}],31:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var isNative = require('lodash._isnative'),
-    noop = require('lodash.noop');
-
-/** Used as the property descriptor for `__bindData__` */
-var descriptor = {
-  'configurable': false,
-  'enumerable': false,
-  'value': null,
-  'writable': false
-};
-
-/** Used to set meta data on functions */
-var defineProperty = (function() {
-  // IE 8 only accepts DOM elements
-  try {
-    var o = {},
-        func = isNative(func = Object.defineProperty) && func,
-        result = func(o, o, o) && func;
-  } catch(e) { }
-  return result;
-}());
-
-/**
- * Sets `this` binding data on a given function.
- *
- * @private
- * @param {Function} func The function to set data on.
- * @param {Array} value The data array to set.
- */
-var setBindData = !defineProperty ? noop : function(func, value) {
-  descriptor.value = value;
-  defineProperty(func, '__bindData__', descriptor);
-};
-
-module.exports = setBindData;
-
-},{"lodash._isnative":32,"lodash.noop":33}],32:[function(require,module,exports){
-module.exports=require(18)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/node_modules/lodash._isnative/index.js":18}],33:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-
-/**
- * A no-operation function.
- *
- * @static
- * @memberOf _
- * @category Utilities
- * @example
- *
- * var object = { 'name': 'fred' };
- * _.noop(object) === undefined;
- * // => true
- */
-function noop() {
-  // no operation performed
-}
-
-module.exports = noop;
-
-},{}],34:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var createWrapper = require('lodash._createwrapper'),
-    slice = require('lodash._slice');
-
-/**
- * Creates a function that, when called, invokes `func` with the `this`
- * binding of `thisArg` and prepends any additional `bind` arguments to those
- * provided to the bound function.
- *
- * @static
- * @memberOf _
- * @category Functions
- * @param {Function} func The function to bind.
- * @param {*} [thisArg] The `this` binding of `func`.
- * @param {...*} [arg] Arguments to be partially applied.
- * @returns {Function} Returns the new bound function.
- * @example
- *
- * var func = function(greeting) {
- *   return greeting + ' ' + this.name;
- * };
- *
- * func = _.bind(func, { 'name': 'fred' }, 'hi');
- * func();
- * // => 'hi fred'
- */
-function bind(func, thisArg) {
-  return arguments.length > 2
-    ? createWrapper(func, 17, slice(arguments, 2), null, thisArg)
-    : createWrapper(func, 1, null, null, thisArg);
-}
-
-module.exports = bind;
-
-},{"lodash._createwrapper":35,"lodash._slice":49}],35:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var baseBind = require('lodash._basebind'),
-    baseCreateWrapper = require('lodash._basecreatewrapper'),
-    isFunction = require('lodash.isfunction'),
-    slice = require('lodash._slice');
-
-/**
- * Used for `Array` method references.
- *
- * Normally `Array.prototype` would suffice, however, using an array literal
- * avoids issues in Narwhal.
- */
-var arrayRef = [];
-
-/** Native method shortcuts */
-var push = arrayRef.push,
-    unshift = arrayRef.unshift;
-
-/**
- * Creates a function that, when called, either curries or invokes `func`
- * with an optional `this` binding and partially applied arguments.
- *
- * @private
- * @param {Function|string} func The function or method name to reference.
- * @param {number} bitmask The bitmask of method flags to compose.
- *  The bitmask may be composed of the following flags:
- *  1 - `_.bind`
- *  2 - `_.bindKey`
- *  4 - `_.curry`
- *  8 - `_.curry` (bound)
- *  16 - `_.partial`
- *  32 - `_.partialRight`
- * @param {Array} [partialArgs] An array of arguments to prepend to those
- *  provided to the new function.
- * @param {Array} [partialRightArgs] An array of arguments to append to those
- *  provided to the new function.
- * @param {*} [thisArg] The `this` binding of `func`.
- * @param {number} [arity] The arity of `func`.
- * @returns {Function} Returns the new function.
- */
-function createWrapper(func, bitmask, partialArgs, partialRightArgs, thisArg, arity) {
-  var isBind = bitmask & 1,
-      isBindKey = bitmask & 2,
-      isCurry = bitmask & 4,
-      isCurryBound = bitmask & 8,
-      isPartial = bitmask & 16,
-      isPartialRight = bitmask & 32;
-
-  if (!isBindKey && !isFunction(func)) {
-    throw new TypeError;
-  }
-  if (isPartial && !partialArgs.length) {
-    bitmask &= ~16;
-    isPartial = partialArgs = false;
-  }
-  if (isPartialRight && !partialRightArgs.length) {
-    bitmask &= ~32;
-    isPartialRight = partialRightArgs = false;
-  }
-  var bindData = func && func.__bindData__;
-  if (bindData && bindData !== true) {
-    // clone `bindData`
-    bindData = slice(bindData);
-    if (bindData[2]) {
-      bindData[2] = slice(bindData[2]);
-    }
-    if (bindData[3]) {
-      bindData[3] = slice(bindData[3]);
-    }
-    // set `thisBinding` is not previously bound
-    if (isBind && !(bindData[1] & 1)) {
-      bindData[4] = thisArg;
-    }
-    // set if previously bound but not currently (subsequent curried functions)
-    if (!isBind && bindData[1] & 1) {
-      bitmask |= 8;
-    }
-    // set curried arity if not yet set
-    if (isCurry && !(bindData[1] & 4)) {
-      bindData[5] = arity;
-    }
-    // append partial left arguments
-    if (isPartial) {
-      push.apply(bindData[2] || (bindData[2] = []), partialArgs);
-    }
-    // append partial right arguments
-    if (isPartialRight) {
-      unshift.apply(bindData[3] || (bindData[3] = []), partialRightArgs);
-    }
-    // merge flags
-    bindData[1] |= bitmask;
-    return createWrapper.apply(null, bindData);
-  }
-  // fast path for `_.bind`
-  var creater = (bitmask == 1 || bitmask === 17) ? baseBind : baseCreateWrapper;
-  return creater([func, bitmask, partialArgs, partialRightArgs, thisArg, arity]);
-}
-
-module.exports = createWrapper;
-
-},{"lodash._basebind":36,"lodash._basecreatewrapper":42,"lodash._slice":49,"lodash.isfunction":48}],36:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var baseCreate = require('lodash._basecreate'),
-    isObject = require('lodash.isobject'),
-    setBindData = require('lodash._setbinddata'),
-    slice = require('lodash._slice');
-
-/**
- * Used for `Array` method references.
- *
- * Normally `Array.prototype` would suffice, however, using an array literal
- * avoids issues in Narwhal.
- */
-var arrayRef = [];
-
-/** Native method shortcuts */
-var push = arrayRef.push;
-
-/**
- * The base implementation of `_.bind` that creates the bound function and
- * sets its meta data.
- *
- * @private
- * @param {Array} bindData The bind data array.
- * @returns {Function} Returns the new bound function.
- */
-function baseBind(bindData) {
-  var func = bindData[0],
-      partialArgs = bindData[2],
-      thisArg = bindData[4];
-
-  function bound() {
-    // `Function#bind` spec
-    // http://es5.github.io/#x15.3.4.5
-    if (partialArgs) {
-      // avoid `arguments` object deoptimizations by using `slice` instead
-      // of `Array.prototype.slice.call` and not assigning `arguments` to a
-      // variable as a ternary expression
-      var args = slice(partialArgs);
-      push.apply(args, arguments);
-    }
-    // mimic the constructor's `return` behavior
-    // http://es5.github.io/#x13.2.2
-    if (this instanceof bound) {
-      // ensure `new bound` is an instance of `func`
-      var thisBinding = baseCreate(func.prototype),
-          result = func.apply(thisBinding, args || arguments);
-      return isObject(result) ? result : thisBinding;
-    }
-    return func.apply(thisArg, args || arguments);
-  }
-  setBindData(bound, bindData);
-  return bound;
-}
-
-module.exports = baseBind;
-
-},{"lodash._basecreate":37,"lodash._setbinddata":31,"lodash._slice":49,"lodash.isobject":40}],37:[function(require,module,exports){
-(function (global){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var isNative = require('lodash._isnative'),
-    isObject = require('lodash.isobject'),
-    noop = require('lodash.noop');
-
-/* Native method shortcuts for methods with the same name as other `lodash` methods */
-var nativeCreate = isNative(nativeCreate = Object.create) && nativeCreate;
-
-/**
- * The base implementation of `_.create` without support for assigning
- * properties to the created object.
- *
- * @private
- * @param {Object} prototype The object to inherit from.
- * @returns {Object} Returns the new object.
- */
-function baseCreate(prototype, properties) {
-  return isObject(prototype) ? nativeCreate(prototype) : {};
-}
-// fallback for browsers without `Object.create`
-if (!nativeCreate) {
-  baseCreate = (function() {
-    function Object() {}
-    return function(prototype) {
-      if (isObject(prototype)) {
-        Object.prototype = prototype;
-        var result = new Object;
-        Object.prototype = null;
-      }
-      return result || global.Object();
-    };
-  }());
-}
-
-module.exports = baseCreate;
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"lodash._isnative":38,"lodash.isobject":40,"lodash.noop":39}],38:[function(require,module,exports){
-module.exports=require(18)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/node_modules/lodash._isnative/index.js":18}],39:[function(require,module,exports){
-module.exports=require(33)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._basecreatecallback/node_modules/lodash._setbinddata/node_modules/lodash.noop/index.js":33}],40:[function(require,module,exports){
-module.exports=require(28)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.isobject/index.js":28,"lodash._objecttypes":41}],41:[function(require,module,exports){
-module.exports=require(16)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash._objecttypes/index.js":16}],42:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var baseCreate = require('lodash._basecreate'),
-    isObject = require('lodash.isobject'),
-    setBindData = require('lodash._setbinddata'),
-    slice = require('lodash._slice');
-
-/**
- * Used for `Array` method references.
- *
- * Normally `Array.prototype` would suffice, however, using an array literal
- * avoids issues in Narwhal.
- */
-var arrayRef = [];
-
-/** Native method shortcuts */
-var push = arrayRef.push;
-
-/**
- * The base implementation of `createWrapper` that creates the wrapper and
- * sets its meta data.
- *
- * @private
- * @param {Array} bindData The bind data array.
- * @returns {Function} Returns the new function.
- */
-function baseCreateWrapper(bindData) {
-  var func = bindData[0],
-      bitmask = bindData[1],
-      partialArgs = bindData[2],
-      partialRightArgs = bindData[3],
-      thisArg = bindData[4],
-      arity = bindData[5];
-
-  var isBind = bitmask & 1,
-      isBindKey = bitmask & 2,
-      isCurry = bitmask & 4,
-      isCurryBound = bitmask & 8,
-      key = func;
-
-  function bound() {
-    var thisBinding = isBind ? thisArg : this;
-    if (partialArgs) {
-      var args = slice(partialArgs);
-      push.apply(args, arguments);
-    }
-    if (partialRightArgs || isCurry) {
-      args || (args = slice(arguments));
-      if (partialRightArgs) {
-        push.apply(args, partialRightArgs);
-      }
-      if (isCurry && args.length < arity) {
-        bitmask |= 16 & ~32;
-        return baseCreateWrapper([func, (isCurryBound ? bitmask : bitmask & ~3), args, null, thisArg, arity]);
-      }
-    }
-    args || (args = arguments);
-    if (isBindKey) {
-      func = thisBinding[key];
-    }
-    if (this instanceof bound) {
-      thisBinding = baseCreate(func.prototype);
-      var result = func.apply(thisBinding, args);
-      return isObject(result) ? result : thisBinding;
-    }
-    return func.apply(thisBinding, args);
-  }
-  setBindData(bound, bindData);
-  return bound;
-}
-
-module.exports = baseCreateWrapper;
-
-},{"lodash._basecreate":43,"lodash._setbinddata":31,"lodash._slice":49,"lodash.isobject":46}],43:[function(require,module,exports){
-module.exports=require(37)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._basecreatecallback/node_modules/lodash.bind/node_modules/lodash._createwrapper/node_modules/lodash._basebind/node_modules/lodash._basecreate/index.js":37,"lodash._isnative":44,"lodash.isobject":46,"lodash.noop":45}],44:[function(require,module,exports){
-module.exports=require(18)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/node_modules/lodash._isnative/index.js":18}],45:[function(require,module,exports){
-module.exports=require(33)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._basecreatecallback/node_modules/lodash._setbinddata/node_modules/lodash.noop/index.js":33}],46:[function(require,module,exports){
-module.exports=require(28)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.isobject/index.js":28,"lodash._objecttypes":47}],47:[function(require,module,exports){
-module.exports=require(16)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash._objecttypes/index.js":16}],48:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-
-/**
- * Checks if `value` is a function.
- *
- * @static
- * @memberOf _
- * @category Objects
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if the `value` is a function, else `false`.
- * @example
- *
- * _.isFunction(_);
- * // => true
- */
-function isFunction(value) {
-  return typeof value == 'function';
-}
-
-module.exports = isFunction;
-
-},{}],49:[function(require,module,exports){
-module.exports=require(14)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash._slice/index.js":14}],50:[function(require,module,exports){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-
-/**
- * This method returns the first argument provided to it.
- *
- * @static
- * @memberOf _
- * @category Utilities
- * @param {*} value Any value.
- * @returns {*} Returns `value`.
- * @example
- *
- * var object = { 'name': 'fred' };
- * _.identity(object) === object;
- * // => true
- */
-function identity(value) {
-  return value;
-}
-
-module.exports = identity;
-
-},{}],51:[function(require,module,exports){
-(function (global){
-/**
- * Lo-Dash 2.4.1 (Custom Build) <http://lodash.com/>
- * Build: `lodash modularize modern exports="npm" -o ./npm/`
- * Copyright 2012-2013 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.5.2 <http://underscorejs.org/LICENSE>
- * Copyright 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
- * Available under MIT license <http://lodash.com/license>
- */
-var isNative = require('lodash._isnative');
-
-/** Used to detect functions containing a `this` reference */
-var reThis = /\bthis\b/;
-
-/**
- * An object used to flag environments features.
- *
- * @static
- * @memberOf _
- * @type Object
- */
-var support = {};
-
-/**
- * Detect if functions can be decompiled by `Function#toString`
- * (all but PS3 and older Opera mobile browsers & avoided in Windows 8 apps).
- *
- * @memberOf _.support
- * @type boolean
- */
-support.funcDecomp = !isNative(global.WinRTError) && reThis.test(function() { return this; });
-
-/**
- * Detect if `Function#name` is supported (all but IE).
- *
- * @memberOf _.support
- * @type boolean
- */
-support.funcNames = typeof Function.name == 'string';
-
-module.exports = support;
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"lodash._isnative":52}],52:[function(require,module,exports){
-module.exports=require(18)
-},{"/Users/mohsen/apigee/swagger-converter/node_modules/lodash.clonedeep/node_modules/lodash._baseclone/node_modules/lodash.assign/node_modules/lodash.keys/node_modules/lodash._isnative/index.js":18}]},{},[1]);
+}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./support/isBuffer":10,"_process":4,"inherits":3}]},{},[1]);
