@@ -221,8 +221,6 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     return {$ref: oldType};
   }
 
-  //TODO: handle list[<TYPE>] types from 1.1 spec
-
   var typeMap = {
     integer:  {type: 'integer'},
     number:   {type: 'number'},
@@ -265,9 +263,29 @@ Converter.prototype.buildDataType = function(oldDataType) {
   if (!oldDataType) { return; }
   assert(typeof oldDataType === 'object');
 
-  var result = this.buildTypeProperties(
-    oldDataType.type || oldDataType.dataType || oldDataType.responseClass
-  );
+  var oldType =
+    oldDataType.type || oldDataType.dataType || oldDataType.responseClass;
+  var oldItems = oldDataType.items;
+
+  if (isValue(oldType)) {
+    //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
+    //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
+    var match = oldType.match(/^(.*)\[(.*)\]$/);
+    if (isValue(match)) {
+      oldType = match[1];
+      oldItems = {type: match[2]};
+    }
+  }
+
+  var result = this.buildTypeProperties(oldType);
+
+  var items;
+  if (isValue(oldItems)) {
+    if (typeof oldItems === 'string') {
+      oldItems = {type: oldItems};
+    }
+    items = this.buildDataType(oldItems);
+  }
 
   //TODO: handle '0' in default
   var defaultValue = oldDataType.default || oldDataType.defaultValue;
@@ -276,15 +294,6 @@ Converter.prototype.buildDataType = function(oldDataType) {
   }
 
   //TODO: support 'allowableValues' from 1.1 spec
-
-  var items;
-  var oldItems = oldDataType.items;
-  if (isValue(oldItems)) {
-    if (typeof oldItems === 'string') {
-      oldItems = {type: oldItems};
-    }
-    items = this.buildDataType(oldItems);
-  }
 
   extend(result, {
     format: oldDataType.format,
