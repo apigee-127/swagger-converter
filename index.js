@@ -260,7 +260,7 @@ Converter.prototype.buildTypeProperties = function(oldType) {
  * @returns {object} - Swagger 2.0 equivalent
  */
 Converter.prototype.buildDataType = function(oldDataType) {
-  if (!oldDataType) { return; }
+  if (!oldDataType) { return {}; }
   assert(typeof oldDataType === 'object');
 
   var oldType =
@@ -279,11 +279,12 @@ Converter.prototype.buildDataType = function(oldDataType) {
 
   var result = this.buildTypeProperties(oldType);
 
+  if (typeof oldItems === 'string') {
+    oldItems = {type: oldItems};
+  }
+
   var items;
-  if (isValue(oldItems)) {
-    if (typeof oldItems === 'string') {
-      oldItems = {type: oldItems};
-    }
+  if (result.type === 'array') {
     items = this.buildDataType(oldItems);
   }
 
@@ -311,7 +312,7 @@ Converter.prototype.buildDataType = function(oldDataType) {
     result.$ref = '#/definitions/' + result.$ref;
   }
 
-  return undefinedIfEmpty(result);
+  return result;
 };
 
 /*
@@ -393,7 +394,7 @@ Converter.prototype.buildResponses = function(oldOperation) {
   });
 
   extend(responses['200'], {
-    schema: this.buildDataType(oldOperation)
+    schema: undefinedIfEmpty(this.buildDataType(oldOperation))
   });
 
   return responses;
@@ -429,11 +430,8 @@ Converter.prototype.buildParameter = function(oldParameter) {
     schema.type = 'string';
   }
 
-  if (schema.type === 'array' &&
-    !(isValue(schema.items) && isValue(schema.items.type)))
-  {
-    schema.items = schema.items || {};
-    extend(schema.items, {type: 'string'});
+  if (schema.type === 'array' && !isValue(schema.items.type)) {
+    schema.items.type = 'string';
   }
 
   var allowMultiple = fixNonStringValue(oldParameter.allowMultiple);
