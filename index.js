@@ -200,7 +200,7 @@ Converter.prototype.buildPathComponents = function(basePath) {
   var url = urlParse(basePath);
   return {
     host: url.host,
-    basePath: url.path || '/',
+    basePath: absolutePath(url.path) || '/',
     //url.protocol include traling colon
     schemes: url.protocol && [url.protocol.slice(0, -1)]
   };
@@ -333,11 +333,7 @@ Converter.prototype.buildPaths = function(apiDeclaration, tags) {
   this.forEach(apiDeclaration.apis, function(api) {
     if (!isValue(api.operations)) { return; }
 
-    var pathString = api.path.replace('{format}', 'json');
-    if (pathString.charAt(0) !== '/') {
-      pathString = '/' + pathString;
-    }
-
+    var pathString = absolutePath(api.path).replace('{format}', 'json');
     var path = paths[pathString] = {};
 
     this.forEach(api.operations, function(oldOperation) {
@@ -659,6 +655,18 @@ function extend(destination) {
     assign(arguments[i]);
   }
   return destination;
+}
+
+/*
+ * Convert any path into absolute path
+ * @param path {string} - path to convert
+ * @returns {string} - result
+*/
+function absolutePath(path) {
+  if (isValue(path) && path.charAt(0) !== '/') {
+    return '/' + path;
+  }
+  return path;
 }
 
 /*
