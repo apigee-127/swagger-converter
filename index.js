@@ -441,12 +441,17 @@ Converter.prototype.buildParameter = function(oldParameter) {
     schema = {type: 'array', items: schema};
   }
 
-  //From now on process only non-body arguments.
   if (isValue(schema.$ref) ||
     (isValue(schema.items) && isValue(schema.items.$ref)))
   {
     throw new SwaggerConverterError(
       'Complex type is used inside non-body argument.');
+  }
+
+  //According to Swagger 2.0 spec: If the parameter is in "path",
+  //this property is required and its value MUST be true.
+  if (parameter.in === 'path') {
+    schema.required = true;
   }
 
   return extend(parameter, schema);
