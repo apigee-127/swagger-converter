@@ -232,7 +232,7 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     int:      {type: 'integer', format: 'int32'},
     long:     {type: 'integer', format: 'int64'},
     float:    {type: 'number',  format: 'float'},
-    double:   {type: 'double',  format: 'double'},
+    double:   {type: 'number',  format: 'double'},
     byte:     {type: 'string',  format: 'byte'},
     date:     {type: 'string',  format: 'date'},
     datetime: {type: 'string',  format: 'date-time'},
