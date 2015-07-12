@@ -229,6 +229,7 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     string:   {type: 'string'},
     boolean:  {type: 'boolean'},
     array:    {type: 'array'},
+    object:   {type: 'object'},
     file:     {type: 'file'},
     int:      {type: 'integer', format: 'int32'},
     long:     {type: 'integer', format: 'int64'},
@@ -238,6 +239,7 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     date:     {type: 'string',  format: 'date'},
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
+    set:      {type: 'array'},
     void:     {}
   };
 
