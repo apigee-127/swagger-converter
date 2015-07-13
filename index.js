@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+'use strict';
 
 var assert = require('assert');
 var urlParse = require('url').parse;
@@ -199,7 +200,7 @@ Converter.prototype.buildPathComponents = function(basePath) {
   var url = urlParse(basePath);
   return {
     host: url.host,
-    basePath: url.path || '/',
+    basePath: absolutePath(url.path) || '/',
     //url.protocol include traling colon
     schemes: url.protocol && [url.protocol.slice(0, -1)]
   };
@@ -220,23 +221,23 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     return {$ref: oldType};
   }
 
-  //TODO: handle list[<TYPE>] types from 1.1 spec
-
   var typeMap = {
     integer:  {type: 'integer'},
     number:   {type: 'number'},
     string:   {type: 'string'},
     boolean:  {type: 'boolean'},
     array:    {type: 'array'},
+    object:   {type: 'object'},
     file:     {type: 'file'},
     int:      {type: 'integer', format: 'int32'},
     long:     {type: 'integer', format: 'int64'},
     float:    {type: 'number',  format: 'float'},
-    double:   {type: 'double',  format: 'double'},
+    double:   {type: 'number',  format: 'double'},
     byte:     {type: 'string',  format: 'byte'},
     date:     {type: 'string',  format: 'date'},
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
+    set:      {type: 'array'},
     void:     {}
   };
 
@@ -259,12 +260,33 @@ Converter.prototype.buildTypeProperties = function(oldType) {
  * @returns {object} - Swagger 2.0 equivalent
  */
 Converter.prototype.buildDataType = function(oldDataType) {
-  if (!oldDataType) { return; }
+  if (!oldDataType) { return {}; }
   assert(typeof oldDataType === 'object');
 
-  var result = this.buildTypeProperties(
-    oldDataType.type || oldDataType.dataType || oldDataType.responseClass
-  );
+  var oldType =
+    oldDataType.type || oldDataType.dataType || oldDataType.responseClass;
+  var oldItems = oldDataType.items;
+
+  if (isValue(oldType)) {
+    //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
+    //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
+    var match = oldType.match(/^(.*)\[(.*)\]$/);
+    if (isValue(match)) {
+      oldType = match[1];
+      oldItems = {type: match[2]};
+    }
+  }
+
+  var result = this.buildTypeProperties(oldType);
+
+  if (typeof oldItems === 'string') {
+    oldItems = {type: oldItems};
+  }
+
+  var items;
+  if (result.type === 'array') {
+    items = this.buildDataType(oldItems);
+  }
 
   //TODO: handle '0' in default
   var defaultValue = oldDataType.default || oldDataType.defaultValue;
@@ -273,15 +295,6 @@ Converter.prototype.buildDataType = function(oldDataType) {
   }
 
   //TODO: support 'allowableValues' from 1.1 spec
-
-  var items;
-  var oldItems = oldDataType.items;
-  if (isValue(oldItems)) {
-    if (typeof oldItems === 'string') {
-      oldItems = {type: oldItems};
-    }
-    items = this.buildDataType(oldItems);
-  }
 
   extend(result, {
     format: oldDataType.format,
@@ -299,7 +312,7 @@ Converter.prototype.buildDataType = function(oldDataType) {
     result.$ref = '#/definitions/' + result.$ref;
   }
 
-  return undefinedIfEmpty(result);
+  return result;
 };
 
 /*
@@ -320,11 +333,7 @@ Converter.prototype.buildPaths = function(apiDeclaration, tags) {
   this.forEach(apiDeclaration.apis, function(api) {
     if (!isValue(api.operations)) { return; }
 
-    var pathString = api.path.replace('{format}', 'json');
-    if (pathString.charAt(0) !== '/') {
-      pathString = '/' + pathString;
-    }
-
+    var pathString = absolutePath(api.path).replace('{format}', 'json');
     var path = paths[pathString] = {};
 
     this.forEach(api.operations, function(oldOperation) {
@@ -381,7 +390,7 @@ Converter.prototype.buildResponses = function(oldOperation) {
   });
 
   extend(responses['200'], {
-    schema: this.buildDataType(oldOperation)
+    schema: undefinedIfEmpty(this.buildDataType(oldOperation))
   });
 
   return responses;
@@ -417,11 +426,8 @@ Converter.prototype.buildParameter = function(oldParameter) {
     schema.type = 'string';
   }
 
-  if (schema.type === 'array' &&
-    !(isValue(schema.items) && isValue(schema.items.type)))
-  {
-    schema.items = schema.items || {};
-    extend(schema.items, {type: 'string'});
+  if (schema.type === 'array' && !isValue(schema.items.type)) {
+    schema.items.type = 'string';
   }
 
   var allowMultiple = fixNonStringValue(oldParameter.allowMultiple);
@@ -431,12 +437,17 @@ Converter.prototype.buildParameter = function(oldParameter) {
     schema = {type: 'array', items: schema};
   }
 
-  //From now on process only non-body arguments.
   if (isValue(schema.$ref) ||
     (isValue(schema.items) && isValue(schema.items.$ref)))
   {
     throw new SwaggerConverterError(
       'Complex type is used inside non-body argument.');
+  }
+
+  //According to Swagger 2.0 spec: If the parameter is in "path",
+  //this property is required and its value MUST be true.
+  if (parameter.in === 'path') {
+    schema.required = true;
   }
 
   return extend(parameter, schema);
@@ -644,6 +655,18 @@ function extend(destination) {
     assign(arguments[i]);
   }
   return destination;
+}
+
+/*
+ * Convert any path into absolute path
+ * @param path {string} - path to convert
+ * @returns {string} - result
+*/
+function absolutePath(path) {
+  if (isValue(path) && path.charAt(0) !== '/') {
+    return '/' + path;
+  }
+  return path;
 }
 
 /*
