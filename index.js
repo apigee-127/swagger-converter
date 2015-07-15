@@ -237,7 +237,7 @@ Converter.prototype.buildTypeProperties = function(oldType) {
     date:     {type: 'string',  format: 'date'},
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
-    set:      {type: 'array'},
+    set:      {type: 'array', uniqueItems: true},
     void:     {}
   };
 
