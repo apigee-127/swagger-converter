@@ -59,6 +59,7 @@ function convert(resourceListing, apiDeclarations) {
 }
 
 var Converter = function() {};
+var prototype = Converter.prototype;
 
 /*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
@@ -66,7 +67,7 @@ var Converter = function() {};
  * @param apiDeclarations {array} - a list of resources
  * @returns {object} - Fully converted Swagger 2.0 document
 */
-Converter.prototype.convert = function(resourceListing, apiDeclarations) {
+prototype.convert = function(resourceListing, apiDeclarations) {
   assert(typeof resourceListing === 'object');
 
   var convertedSecurityNames = {};
@@ -132,7 +133,7 @@ Converter.prototype.convert = function(resourceListing, apiDeclarations) {
  * @param resourcePath {string} - Swagger 1.2 resource path
  * @returns {string} - tag name
 */
-Converter.prototype.extractTag = function(resourcePath) {
+prototype.extractTag = function(resourcePath) {
   if (!isValue(resourcePath)) { return; }
 
   var path = urlParse(resourcePath).path;
@@ -152,7 +153,7 @@ Converter.prototype.extractTag = function(resourcePath) {
  * @param source {object} - Swagger 1.2 document object
  * @returns {object} - "info" section of Swagger 2.0 document
 */
-Converter.prototype.buildInfo = function(source) {
+prototype.buildInfo = function(source) {
   var info = {
     version: source.apiVersion || '1.0.0',
     title: 'Title was not specified'
@@ -194,7 +195,7 @@ Converter.prototype.buildInfo = function(source) {
  * Swagger 1.2 basePath.
  * @param basePath {string} - the base path from Swagger 1.2
 */
-Converter.prototype.buildPathComponents = function(basePath) {
+prototype.buildPathComponents = function(basePath) {
   if (!basePath) { return {}; }
 
   var url = urlParse(basePath);
@@ -214,7 +215,7 @@ Converter.prototype.buildPathComponents = function(basePath) {
  * @returns {object} - Swagger 2.0 equivalent
  * @throws {SwaggerConverterError}
  */
-Converter.prototype.buildTypeProperties = function(oldType) {
+prototype.buildTypeProperties = function(oldType) {
   if (!oldType) { return {}; }
 
   if (this.customTypes.indexOf(oldType) !== -1) {
@@ -259,7 +260,7 @@ Converter.prototype.buildTypeProperties = function(oldType) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-Converter.prototype.buildDataType = function(oldDataType) {
+prototype.buildDataType = function(oldDataType) {
   if (!oldDataType) { return {}; }
   assert(typeof oldDataType === 'object');
 
@@ -321,7 +322,7 @@ Converter.prototype.buildDataType = function(oldDataType) {
  * @param tag {array} - array of Swagger 2.0 tag names
  * @returns {object} - Swagger 2.0 path object
 */
-Converter.prototype.buildPaths = function(apiDeclaration, tags) {
+prototype.buildPaths = function(apiDeclaration, tags) {
   var paths = {};
 
   var operationDefaults = {
@@ -352,7 +353,7 @@ Converter.prototype.buildPaths = function(apiDeclaration, tags) {
  * @param operationDefaults {object} - defaults from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
-Converter.prototype.buildOperation = function(oldOperation, operationDefaults) {
+prototype.buildOperation = function(oldOperation, operationDefaults) {
   var parameters = [];
 
   this.forEach(oldOperation.parameters, function(oldParameter) {
@@ -377,7 +378,7 @@ Converter.prototype.buildOperation = function(oldOperation, operationDefaults) {
  * @param oldOperation {object} - Swagger 1.2 operation object
  * @returns {object} - Swagger 2.0 response object
 */
-Converter.prototype.buildResponses = function(oldOperation) {
+prototype.buildResponses = function(oldOperation) {
   var responses = {
     '200': {description: 'No response was specified'}
   };
@@ -403,7 +404,7 @@ Converter.prototype.buildResponses = function(oldOperation) {
  * @returns {object} - Swagger 2.0 parameter object
  * @throws {SwaggerConverterError}
 */
-Converter.prototype.buildParameter = function(oldParameter) {
+prototype.buildParameter = function(oldParameter) {
   var parameter = extend({}, {
     in: oldParameter.paramType,
     description: oldParameter.description,
@@ -470,7 +471,7 @@ Converter.prototype.buildParameter = function(oldParameter) {
  *
  * @returns {object} - Swagger 2.0 security definitions
  */
-Converter.prototype.buildSecurityDefinitions = function(resourceListing,
+prototype.buildSecurityDefinitions = function(resourceListing,
   convertedSecurityNames) {
   if (isEmpty(resourceListing.authorizations)) {
     return undefined;
@@ -549,7 +550,7 @@ Converter.prototype.buildSecurityDefinitions = function(resourceListing,
  * @param model {object} - Swagger 1.2 model object
  * @returns {object} - Swagger 2.0 model object
 */
-Converter.prototype.buildModel = function(oldModel) {
+prototype.buildModel = function(oldModel) {
   var required = [];
   var properties = {};
 
@@ -581,7 +582,7 @@ Converter.prototype.buildModel = function(oldModel) {
  * @returns {object} - Swagger 2.0 definitions object
  * @throws {SwaggerConverterError}
 */
-Converter.prototype.buildDefinitions = function(oldModels) {
+prototype.buildDefinitions = function(oldModels) {
   var models = {};
 
   this.forEach(oldModels, function(oldModel, modelId) {
@@ -613,7 +614,7 @@ Converter.prototype.buildDefinitions = function(oldModels) {
  * @param collection {array|object} - the collection to iterate over
  * @parma iteratee {function} - the function invoked per iteration
 */
-Converter.prototype.forEach = function(collection, iteratee) {
+prototype.forEach = function(collection, iteratee) {
   if (!isValue(collection)) {
     return;
   }
