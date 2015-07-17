@@ -85,7 +85,6 @@ prototype.convert = function(resourceListing, apiDeclarations) {
   var tags = [];
   var paths = {};
   var definitions = {};
-  var pathComponents = {};
 
   // Handle embedded documents
   var resources = [resourceListing];
@@ -112,20 +111,19 @@ prototype.convert = function(resourceListing, apiDeclarations) {
 
     extend(definitions, this.buildDefinitions(resource.models));
     extend(paths, this.buildPaths(resource, operationTags));
-
-    // For each apiDeclaration if there is a basePath, assign path components
-    // This might override previous assignments
-    extend(pathComponents, this.buildPathComponents(resource.basePath));
   });
 
-  return extend({}, pathComponents, {
-    swagger: '2.0',
-    info: this.buildInfo(resourceListing),
-    tags: undefinedIfEmpty(tags),
-    paths: undefinedIfEmpty(paths),
-    securityDefinitions: securityDefinitions,
-    definitions: undefinedIfEmpty(definitions)
-  });
+  return extend({},
+    this.aggregatePathComponents(resourceListing, apiDeclarations),
+    {
+      swagger: '2.0',
+      info: this.buildInfo(resourceListing),
+      tags: undefinedIfEmpty(tags),
+      paths: undefinedIfEmpty(paths),
+      securityDefinitions: securityDefinitions,
+      definitions: undefinedIfEmpty(definitions)
+    }
+  );
 };
 
 /*
@@ -191,9 +189,34 @@ prototype.buildInfo = function(source) {
 };
 
 /*
+ * Merge path components from all resources.
+ * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param apiDeclarations {array} - a list of resources
+ * @returns {object} - Swagger 2.0 path components
+ * @throws {SwaggerConverterError}
+*/
+prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
+  var path = extend({}, this.buildPathComponents(resourceListing.basePath));
+
+  var basePath;
+  this.forEach(apiDeclarations, function(api) {
+    //TODO: Swagger 1.2 support per resouce 'basePath', but Swagger 2.0 doesn't
+    // solution could be to create separate spec per each 'basePath'.
+    if (isValue(basePath) && api.basePath !== basePath) {
+      throw new SwaggerConverterError(
+        'Resources can not override each other basePaths');
+    }
+    basePath = api.basePath;
+  });
+
+  return extend(path, this.buildPathComponents(basePath));
+};
+
+/*
  * Get host, basePath and schemes for Swagger 2.0 result document from
  * Swagger 1.2 basePath.
  * @param basePath {string} - the base path from Swagger 1.2
+ * @returns {object} - Swagger 2.0 path components
 */
 prototype.buildPathComponents = function(basePath) {
   if (!basePath) { return {}; }
