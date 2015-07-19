@@ -74,44 +74,37 @@ prototype.convert = function(resourceListing, apiDeclarations) {
   var securityDefinitions = this.buildSecurityDefinitions(resourceListing,
     convertedSecurityNames);
 
-  var tagDescriptions = {};
-  this.forEach(resourceListing.apis, function(resource) {
-    var tagName = this.extractTag(resource.path);
-    if (!isValue(tagName)) { return; }
-
-    tagDescriptions[tagName] = resource.description;
-  });
-
   var tags = [];
-  var paths = {};
-  var definitions = {};
+  this.paths = {};
+  this.definitions = {};
 
-  // Handle embedded documents
-  var resources = [resourceListing];
-  if (isValue(apiDeclarations)) {
-    resources = resources.concat(apiDeclarations);
+  if (this.isEmbeddedDocument(resourceListing)) {
+    this.convertApiDeclaration(resourceListing, undefined);
   }
+  else {
+    var tagDescriptions = {};
+    this.forEach(resourceListing.apis, function(resource) {
+      var tagName = this.extractTag(resource.path);
+      if (!isValue(tagName)) { return; }
 
-  this.forEach(resources, function(resource) {
-    var operationTags;
-    var tagName = this.extractTag(resource.resourcePath);
+      tagDescriptions[tagName] = resource.description;
+    });
 
-    if (isValue(tagName)) {
-      tags.push(extend({}, {
-        name: tagName,
-        description: tagDescriptions[tagName]
-      }));
-      operationTags = [tagName];
-    }
+    this.forEach(apiDeclarations, function(declaration) {
+      var operationTags;
+      var tagName = this.extractTag(declaration.resourcePath);
 
-    this.customTypes = [];
-    if (isValue(resource.models)) {
-      this.customTypes = Object.keys(resource.models);
-    }
+      if (isValue(tagName)) {
+        tags.push(extend({}, {
+          name: tagName,
+          description: tagDescriptions[tagName]
+        }));
+        operationTags = [tagName];
+      }
 
-    extend(definitions, this.buildDefinitions(resource.models));
-    extend(paths, this.buildPaths(resource, operationTags));
-  });
+      this.convertApiDeclaration(declaration, operationTags);
+    });
+  }
 
   return extend({},
     this.aggregatePathComponents(resourceListing, apiDeclarations),
@@ -119,11 +112,52 @@ prototype.convert = function(resourceListing, apiDeclarations) {
       swagger: '2.0',
       info: this.buildInfo(resourceListing),
       tags: undefinedIfEmpty(tags),
-      paths: undefinedIfEmpty(paths),
+      paths: undefinedIfEmpty(this.paths),
       securityDefinitions: securityDefinitions,
-      definitions: undefinedIfEmpty(definitions)
+      definitions: undefinedIfEmpty(this.definitions)
     }
   );
+};
+
+/*
+ * Converts Swagger 1.2 API declaration
+ * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
+ * @param tags {array} - array of Swagger 2.0 tag names
+*/
+prototype.convertApiDeclaration = function(apiDeclaration, tags) {
+  this.customTypes = [];
+  if (isValue(apiDeclaration.models)) {
+    this.customTypes = Object.keys(apiDeclaration.models);
+  }
+
+  extend(this.definitions, this.buildDefinitions(apiDeclaration.models));
+  extend(this.paths, this.buildPaths(apiDeclaration, tags));
+};
+
+/*
+ * Test if object is embedded document
+ * @param resourceListing {object} - root of Swagger 1.2 document
+ * @returns {boolean} - result of test
+*/
+prototype.isEmbeddedDocument = function(resourceListing) {
+  var seenOperations = false;
+  var seenApiDeclaration = false;
+
+  this.forEach(resourceListing.apis, function(resource) {
+    if (!isEmpty(resource.operations)) {
+      seenOperations = true;
+    }
+    else if (isValue(resource.path)) {
+      seenApiDeclaration = true;
+    }
+
+    if (seenOperations && seenApiDeclaration) {
+      throw new SwaggerConverterError(
+        'Resource listing can not have both operations and API declarations.');
+    }
+  });
+
+  return seenOperations;
 };
 
 /*
