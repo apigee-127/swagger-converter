@@ -82,24 +82,14 @@ prototype.convert = function(resourceListing, apiDeclarations) {
     this.convertApiDeclaration(resourceListing, undefined);
   }
   else {
-    var tagDescriptions = {};
-    this.forEach(resourceListing.apis, function(resource) {
-      var tagName = this.extractTag(resource.path);
-      if (!isValue(tagName)) { return; }
+    tags = this.buildTags(resourceListing, apiDeclarations);
 
-      tagDescriptions[tagName] = resource.description;
-    });
-
-    this.forEach(apiDeclarations, function(declaration) {
+    this.forEach(apiDeclarations, function(declaration, index) {
       var operationTags;
-      var tagName = this.extractTag(declaration.resourcePath);
 
-      if (isValue(tagName)) {
-        tags.push(extend({}, {
-          name: tagName,
-          description: tagDescriptions[tagName]
-        }));
-        operationTags = [tagName];
+      var tag = tags[index];
+      if (isValue(tag)) {
+        operationTags = [tag.name];
       }
 
       this.convertApiDeclaration(declaration, operationTags);
@@ -111,12 +101,81 @@ prototype.convert = function(resourceListing, apiDeclarations) {
     {
       swagger: '2.0',
       info: this.buildInfo(resourceListing),
-      tags: undefinedIfEmpty(tags),
+      tags: undefinedIfEmpty(removeNonValues(tags)),
       paths: undefinedIfEmpty(this.paths),
       securityDefinitions: securityDefinitions,
       definitions: undefinedIfEmpty(this.definitions)
     }
   );
+};
+
+/*
+ * Builds "tags" section of Swagger 2.0 document
+ * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param apiDeclarations {array} - a list of resources
+ * @returns {array} - list of Swagger 2.0 tags
+*/
+Converter.prototype.buildTags = function(resourceListing, apiDeclarations) {
+  if (isEmpty(apiDeclarations)) {
+    return [];
+  }
+
+  var paths = [];
+  this.forEach(apiDeclarations, function(declaration) {
+    var path = declaration.resourcePath;
+    if (isValue(path) && paths.indexOf(path) === -1) {
+      paths.push(path);
+    }
+  });
+
+  //'resourcePath' is optional parameter and also frequently have invalid values
+  //if so than we don't create any tags at all.
+  //TODO: generate replacement based on longest common prefix for paths in resource.
+  if (paths.length < apiDeclarations.length) {
+    return [];
+  }
+
+  //TODO: better way to mach tag names and descriptions
+  var tagDescriptions = {};
+  this.forEach(resourceListing.apis, function(resource) {
+    var tagName = this.extractTag(resource.path);
+    if (!isValue(tagName)) { return; }
+
+    tagDescriptions[tagName] = resource.description;
+  });
+
+  var tags = [];
+  this.forEach(paths, function(path) {
+    var name = this.extractTag(path);
+    var description = tagDescriptions[name];
+
+    tags.push(extend({}, {
+      name: name,
+      description: description
+    }));
+  });
+
+  return tags;
+};
+
+/*
+ * Extract name of the tag from resourcePath
+ * @param resourcePath {string} - Swagger 1.2 resource path
+ * @returns {string} - tag name
+*/
+prototype.extractTag = function(resourcePath) {
+  if (!isValue(resourcePath)) { return; }
+
+  var path = urlParse(resourcePath).path;
+  if (!isValue(path)) { return; }
+
+  path = path.replace(/\/$/, '');
+  path = path.replace('{format}', 'json');
+  path = path.replace(/.json$/, '');
+  path = path.split(['/']).pop();
+
+  if (path === '') { return; }
+  return path;
 };
 
 /*
@@ -158,26 +217,6 @@ prototype.isEmbeddedDocument = function(resourceListing) {
   });
 
   return seenOperations;
-};
-
-/*
- * Extract name of the tag from resourcePath
- * @param resourcePath {string} - Swagger 1.2 resource path
- * @returns {string} - tag name
-*/
-prototype.extractTag = function(resourcePath) {
-  if (!isValue(resourcePath)) { return; }
-
-  var path = urlParse(resourcePath).path;
-  if (!isValue(path)) { return; }
-
-  path = path.replace(/\/$/, '');
-  path = path.replace('{format}', 'json');
-  path = path.replace(/.json$/, '');
-  path = path.split(['/']).pop();
-
-  if (path === '') { return; }
-  return path;
 };
 
 /*
@@ -735,6 +774,27 @@ function absolutePath(path) {
 */
 function undefinedIfEmpty(value) {
   return isEmpty(value) ? undefined : value;
+}
+
+/*
+ * Filter out all non value elements(null, undefined) from array
+ * @param collection {array} - the collection to filter
+ * @returns {array} - result
+*/
+function removeNonValues(collection) {
+  if (!isValue(collection)) {
+    return collection;
+  }
+
+  assert(Array.isArray(collection));
+
+  var result = [];
+  collection.forEach(function(value) {
+    if (isValue(value)) {
+      result.push(value);
+    }
+  });
+  return result;
 }
 
 /*
