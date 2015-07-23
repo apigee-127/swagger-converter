@@ -35,7 +35,7 @@ var apiDeclarations = [
 
 var swagger2Document = convert(resourceListing, apiDeclarations);
 
-console.log(swagger2Document);
+console.log(JSON.stringify(swagger2Document));
 ```
 
 ##### In browser
