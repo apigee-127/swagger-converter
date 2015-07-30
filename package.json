@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha",
+    "pretest": "npm run build",
     "prebuild": "npm test",
     "browserify": "browserify index.js > browser.js",
     "preuglify": "npm run browserify",
