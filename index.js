@@ -334,7 +334,8 @@ prototype.buildTypeProperties = function(oldType) {
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
     set:      {type: 'array', uniqueItems: true},
-    void:     {}
+    void:     {},
+    any:      {}
   };
 
   var type = typeMap[oldType.toLowerCase()];
