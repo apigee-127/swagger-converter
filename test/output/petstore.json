@@ -736,7 +736,7 @@
                 "read:pets": "Read your pets"
             }
         },
-        "oauth2_authorization_code": {
+        "oauth2_accessCode": {
             "type": "oauth2",
             "flow": "accessCode",
             "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/requestToken",
