@@ -17,6 +17,9 @@ npm install swagger-converter --save
 ```
 
 ### Usage
+
+It's recommended to use command line tools like [**`swagger-tools`**][swagger-tools-npm] or [**`swagger-spec-converter`**][swagger-spec-converter] for converting your spec. This module will not handle validation and if your spec is not valid can produce invalid spec.
+
 Swagger Converter expects two arguments.
 
 * `resourceListing` is Swagger 1.2 entry point file.
@@ -73,3 +76,5 @@ MIT. See [LICENSE](./LICENSE)
 [deps-link]: https://david-dm.org/apigee-127/swagger-converter
 [devdeps-image]: https://img.shields.io/david/dev/apigee-127/swagger-converter.svg?style=flat
 [devdeps-link]: https://david-dm.org/apigee-127/swagger-converter#info=devDependencies
+[swagger-tools-npm]: https://www.npmjs.com/package/swagger-tools
+[swagger-spec-converter]: https://github.com/lucybot/api-spec-converter
