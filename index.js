@@ -70,9 +70,8 @@ var prototype = Converter.prototype;
 prototype.convert = function(resourceListing, apiDeclarations) {
   assert(typeof resourceListing === 'object');
 
-  var convertedSecurityNames = {};
-  var securityDefinitions = this.buildSecurityDefinitions(resourceListing,
-    convertedSecurityNames);
+  var securityDefinitions =
+    this.buildSecurityDefinitions(resourceListing.authorizations);
 
   var tags = [];
   this.paths = {};
@@ -103,7 +102,7 @@ prototype.convert = function(resourceListing, apiDeclarations) {
       info: this.buildInfo(resourceListing),
       tags: undefinedIfEmpty(removeNonValues(tags)),
       paths: undefinedIfEmpty(this.paths),
-      securityDefinitions: securityDefinitions,
+      securityDefinitions: undefinedIfEmpty(securityDefinitions),
       definitions: undefinedIfEmpty(this.definitions)
     }
   );
@@ -552,90 +551,74 @@ prototype.buildParameter = function(oldParameter) {
 };
 
 /*
- * Convertes Swagger 1.2 authorization definitions to Swagger 2.0 security
- *   definitions
+ * Convertes Swagger 1.2 authorization definitions into Swagger 2.0 definitions
+ * Definitions couldn't be converted 1 to 1, 'this.securityNamesMap' should be
+ * used to map between Swagger 1.2 names and one or more Swagger 2.0 names.
  *
- * @param resourceListing {object} - The Swagger 1.2 Resource Listing document
- * @param convertedSecurityNames {object} - A list of original Swagger 1.2
- * authorization names and the new Swagger 2.0
- *  security names associated with it (This is required because Swagger 2.0 only
- *  supports one oauth2 flow per security definition but in Swagger 1.2 you
- *  could describe two (implicit and authorization_code).  To support this, we
- *  will create a per-flow version of each oauth2 definition, where necessary,
- *  and keep track of the new names so that when we handle security references
- *  we reference things properly.)
- *
+ * @param oldAuthorizations {object} - The Swagger 1.2 Authorizations definitions
  * @returns {object} - Swagger 2.0 security definitions
  */
-prototype.buildSecurityDefinitions = function(resourceListing,
-  convertedSecurityNames) {
-  if (isEmpty(resourceListing.authorizations)) {
-    return undefined;
-  }
-
+prototype.buildSecurityDefinitions = function(oldAuthorizations) {
   var securityDefinitions = {};
 
-  Object.keys(resourceListing.authorizations).forEach(function(name) {
-    var authorization = resourceListing.authorizations[name];
-    var createDefinition = function createDefinition(oName) {
-      var securityDefinition = securityDefinitions[oName || name] = {
-        type: authorization.type
-      };
+  this.securityNamesMap = {};
+  this.forEach(oldAuthorizations, function(oldAuthorization, name) {
+    var scopes = {};
+    this.forEach(oldAuthorization.scopes, function(oldScope) {
+      var name = oldScope.scope;
+      scopes[name] = oldScope.description || ('Undescribed ' + name);
+    });
 
-      if (authorization.passAs) {
-        securityDefinition.in = authorization.passAs;
-      }
+    var securityDefinition = extend({}, {
+      type: oldAuthorization.type,
+      in: oldAuthorization.passAs,
+      name: oldAuthorization.keyname,
+      scopes: undefinedIfEmpty(scopes)
+    });
 
-      if (authorization.keyname) {
-        securityDefinition.name = authorization.keyname;
-      }
-
-      return securityDefinition;
-    };
-
-    // For oauth2 types, 1.2 describes multiple "flows" in one auth and for 2.0,
-    // that is not an option so we need to
-    // create one security definition per flow and keep track of this mapping.
-    if (authorization.grantTypes) {
-      convertedSecurityNames[name] = [];
-
-      Object.keys(authorization.grantTypes).forEach(function(gtName) {
-        var grantType = authorization.grantTypes[gtName];
-        var oName = name + '_' + gtName;
-        var securityDefinition = createDefinition(oName);
-
-        convertedSecurityNames[name].push(oName);
-
-        if (gtName === 'implicit') {
-          securityDefinition.flow = 'implicit';
-        } else {
-          securityDefinition.flow = 'accessCode';
-        }
-
-        switch (gtName) {
-        case 'implicit':
-          securityDefinition.authorizationUrl = grantType.loginEndpoint.url;
-          break;
-
-        case 'authorization_code':
-          securityDefinition.authorizationUrl =
-            grantType.tokenRequestEndpoint.url;
-          securityDefinition.tokenUrl = grantType.tokenEndpoint.url;
-          break;
-        }
-
-        if (authorization.scopes) {
-          securityDefinition.scopes = {};
-
-          authorization.scopes.forEach(function(scope) {
-            securityDefinition.scopes[scope.scope] = scope.description ||
-              ('Undescribed ' + scope.scope);
-          });
-        }
-      });
-    } else {
-      createDefinition();
+    if (securityDefinition.type === 'basicAuth') {
+      securityDefinition.type = 'basic';
     }
+
+    if (!isValue(oldAuthorization.grantTypes)) {
+      securityDefinitions[name] = securityDefinition;
+      this.securityNamesMap[name] = [name];
+      return;
+    }
+
+    this.securityNamesMap[name] = [];
+    // For oauth2 types, 1.2 describes multiple "flows" in one authorization object.
+    // But for 2.0 we need to create one security definition per flow.
+    this.forEach(oldAuthorization.grantTypes, function(oldGrantType, gtName) {
+      var grantParameters = {};
+
+      switch (gtName) {
+      case 'implicit':
+        extend(grantParameters, {
+          flow: 'implicit',
+          authorizationUrl: getValue(oldGrantType, 'loginEndpoint', 'url')
+        });
+        break;
+
+      case 'authorization_code':
+        extend(grantParameters, {
+          flow: 'accessCode',
+          tokenUrl: getValue(oldGrantType, 'tokenEndpoint', 'url'),
+          authorizationUrl:
+            getValue(oldGrantType, 'tokenRequestEndpoint', 'url')
+        });
+        break;
+      }
+
+      var oName = name;
+      if (getLength(oldAuthorization.grantTypes) > 1) {
+        oName += '_' + grantParameters.flow;
+      }
+
+      this.securityNamesMap[name].push(oName);
+      securityDefinitions[oName] =
+        extend({}, securityDefinition, grantParameters);
+    });
   });
 
   return securityDefinitions;
@@ -807,24 +790,43 @@ function isValue(value) {
 }
 
 /*
+ * Get length of container(Array or Object).
+ * @param value {*} - container
+ * @returns {number} - length of container
+*/
+function getLength(value) {
+  if (typeof value !== 'object') {
+    return 0;
+  }
+
+  if (isValue(value.length)) {
+    return value.length;
+  }
+
+  return Object.keys(value).length;
+}
+
+/*
  * Test if value is empty
  * @param value {*} - value to test
  * @returns {boolean} - result of test
 */
 function isEmpty(value) {
-  if (!isValue(value)) {
-    return true;
-  }
+  return (getLength(value) === 0);
+}
 
-  if (typeof value !== 'object') {
-    return true;
+/*
+ * Get property value of object
+ * @param object {*} - object
+ * @returns {*} - property value
+*/
+function getValue(object) {
+  for (var i = 1; i < arguments.length && isValue(object); ++i) {
+    var propertyName = arguments[i];
+    assert(typeof propertyName === 'string');
+    object = object[propertyName];
   }
-
-  if (isValue(value.length)) {
-    return (value.length === 0);
-  }
-
-  return (Object.keys(value).length === 0);
+  return object;
 }
 
 /*
