@@ -4,8 +4,12 @@
   "description": "Swagger Converter",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha",
-    "build": "npm test; ./node_modules/browserify/bin/cmd.js ./index.js > ./browser.js; ./node_modules/uglify-js/bin/uglifyjs ./browser.js > ./browser.min.js",
+    "test": "mocha",
+    "prebuild": "npm test",
+    "browserify": "browserify index.js > browser.js",
+    "preuglify": "npm run browserify",
+    "uglify": "uglifyjs browser.js > browser.min.js",
+    "build": "npm run uglify",
     "prepublish": "npm run build"
   },
   "repository": {
@@ -32,7 +36,5 @@
     "seamless-immutable": "^2.4.1",
     "swagger-tools": "^0.9.0",
     "uglify-js": "^2.4.16"
-  },
-  "dependencies": {
   }
 }
