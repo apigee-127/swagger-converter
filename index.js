@@ -220,44 +220,37 @@ prototype.isEmbeddedDocument = function(resourceListing) {
 
 /*
  * Builds "info" section of Swagger 2.0 document
- * @param source {object} - Swagger 1.2 document object
+ * @param resourceListing {object} - root of Swagger 1.2 document
  * @returns {object} - "info" section of Swagger 2.0 document
 */
-prototype.buildInfo = function(source) {
+prototype.buildInfo = function(resourceListing) {
   var info = {
-    version: source.apiVersion || '1.0.0',
-    title: 'Title was not specified'
+    title: 'Title was not specified',
+    version: resourceListing.apiVersion || '1.0.0',
   };
 
-  if (typeof source.info === 'object') {
-
-    if (source.info.title) {
-      info.title = source.info.title;
-    }
-
-    if (source.info.description) {
-      info.description = source.info.description;
-    }
-
-    if (source.info.contact) {
-      info.contact = {
-        email: source.info.contact
-      };
-    }
-
-    if (source.info.license) {
-      info.license = {
-        name: source.info.license,
-        url: source.info.licenseUrl
-      };
-    }
-
-    if (source.info.termsOfServiceUrl) {
-      info.termsOfService = source.info.termsOfServiceUrl;
-    }
+  var oldInfo = resourceListing.info;
+  if (!isValue(oldInfo)) {
+    return info;
   }
 
-  return info;
+  var contact = extend({}, {email: oldInfo.contact});
+  var license;
+
+  if (isValue(oldInfo.license)) {
+    license = extend({}, {
+      name: oldInfo.license,
+      url: oldInfo.licenseUrl
+    });
+  }
+
+  return extend(info, {
+    title: oldInfo.title,
+    description: oldInfo.description,
+    contact: undefinedIfEmpty(contact),
+    license: undefinedIfEmpty(license),
+    termsOfService: oldInfo.termsOfServiceUrl
+  });
 };
 
 /*
@@ -334,7 +327,8 @@ prototype.buildTypeProperties = function(oldType) {
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
     set:      {type: 'array', uniqueItems: true},
-    void:     {}
+    void:     {},
+    any:      {}
   };
 
   var type = typeMap[oldType.toLowerCase()];
