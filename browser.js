@@ -71,9 +71,8 @@ var prototype = Converter.prototype;
 prototype.convert = function(resourceListing, apiDeclarations) {
   assert(typeof resourceListing === 'object');
 
-  var convertedSecurityNames = {};
-  var securityDefinitions = this.buildSecurityDefinitions(resourceListing,
-    convertedSecurityNames);
+  var securityDefinitions =
+    this.buildSecurityDefinitions(resourceListing.authorizations);
 
   var tags = [];
   this.paths = {};
@@ -104,7 +103,7 @@ prototype.convert = function(resourceListing, apiDeclarations) {
       info: this.buildInfo(resourceListing),
       tags: undefinedIfEmpty(removeNonValues(tags)),
       paths: undefinedIfEmpty(this.paths),
-      securityDefinitions: securityDefinitions,
+      securityDefinitions: undefinedIfEmpty(securityDefinitions),
       definitions: undefinedIfEmpty(this.definitions)
     }
   );
@@ -222,44 +221,37 @@ prototype.isEmbeddedDocument = function(resourceListing) {
 
 /*
  * Builds "info" section of Swagger 2.0 document
- * @param source {object} - Swagger 1.2 document object
+ * @param resourceListing {object} - root of Swagger 1.2 document
  * @returns {object} - "info" section of Swagger 2.0 document
 */
-prototype.buildInfo = function(source) {
+prototype.buildInfo = function(resourceListing) {
   var info = {
-    version: source.apiVersion || '1.0.0',
-    title: 'Title was not specified'
+    title: 'Title was not specified',
+    version: resourceListing.apiVersion || '1.0.0',
   };
 
-  if (typeof source.info === 'object') {
-
-    if (source.info.title) {
-      info.title = source.info.title;
-    }
-
-    if (source.info.description) {
-      info.description = source.info.description;
-    }
-
-    if (source.info.contact) {
-      info.contact = {
-        email: source.info.contact
-      };
-    }
-
-    if (source.info.license) {
-      info.license = {
-        name: source.info.license,
-        url: source.info.licenseUrl
-      };
-    }
-
-    if (source.info.termsOfServiceUrl) {
-      info.termsOfService = source.info.termsOfServiceUrl;
-    }
+  var oldInfo = resourceListing.info;
+  if (!isValue(oldInfo)) {
+    return info;
   }
 
-  return info;
+  var contact = extend({}, {email: oldInfo.contact});
+  var license;
+
+  if (isValue(oldInfo.license)) {
+    license = extend({}, {
+      name: oldInfo.license,
+      url: oldInfo.licenseUrl
+    });
+  }
+
+  return extend(info, {
+    title: oldInfo.title,
+    description: oldInfo.description,
+    contact: undefinedIfEmpty(contact),
+    license: undefinedIfEmpty(license),
+    termsOfService: oldInfo.termsOfServiceUrl
+  });
 };
 
 /*
@@ -336,7 +328,8 @@ prototype.buildTypeProperties = function(oldType) {
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
     set:      {type: 'array', uniqueItems: true},
-    void:     {}
+    void:     {},
+    any:      {}
   };
 
   var type = typeMap[oldType.toLowerCase()];
@@ -553,90 +546,74 @@ prototype.buildParameter = function(oldParameter) {
 };
 
 /*
- * Convertes Swagger 1.2 authorization definitions to Swagger 2.0 security
- *   definitions
+ * Convertes Swagger 1.2 authorization definitions into Swagger 2.0 definitions
+ * Definitions couldn't be converted 1 to 1, 'this.securityNamesMap' should be
+ * used to map between Swagger 1.2 names and one or more Swagger 2.0 names.
  *
- * @param resourceListing {object} - The Swagger 1.2 Resource Listing document
- * @param convertedSecurityNames {object} - A list of original Swagger 1.2
- * authorization names and the new Swagger 2.0
- *  security names associated with it (This is required because Swagger 2.0 only
- *  supports one oauth2 flow per security definition but in Swagger 1.2 you
- *  could describe two (implicit and authorization_code).  To support this, we
- *  will create a per-flow version of each oauth2 definition, where necessary,
- *  and keep track of the new names so that when we handle security references
- *  we reference things properly.)
- *
+ * @param oldAuthorizations {object} - The Swagger 1.2 Authorizations definitions
  * @returns {object} - Swagger 2.0 security definitions
  */
-prototype.buildSecurityDefinitions = function(resourceListing,
-  convertedSecurityNames) {
-  if (isEmpty(resourceListing.authorizations)) {
-    return undefined;
-  }
-
+prototype.buildSecurityDefinitions = function(oldAuthorizations) {
   var securityDefinitions = {};
 
-  Object.keys(resourceListing.authorizations).forEach(function(name) {
-    var authorization = resourceListing.authorizations[name];
-    var createDefinition = function createDefinition(oName) {
-      var securityDefinition = securityDefinitions[oName || name] = {
-        type: authorization.type
-      };
+  this.securityNamesMap = {};
+  this.forEach(oldAuthorizations, function(oldAuthorization, name) {
+    var scopes = {};
+    this.forEach(oldAuthorization.scopes, function(oldScope) {
+      var name = oldScope.scope;
+      scopes[name] = oldScope.description || ('Undescribed ' + name);
+    });
 
-      if (authorization.passAs) {
-        securityDefinition.in = authorization.passAs;
-      }
+    var securityDefinition = extend({}, {
+      type: oldAuthorization.type,
+      in: oldAuthorization.passAs,
+      name: oldAuthorization.keyname,
+      scopes: undefinedIfEmpty(scopes)
+    });
 
-      if (authorization.keyname) {
-        securityDefinition.name = authorization.keyname;
-      }
-
-      return securityDefinition;
-    };
-
-    // For oauth2 types, 1.2 describes multiple "flows" in one auth and for 2.0,
-    // that is not an option so we need to
-    // create one security definition per flow and keep track of this mapping.
-    if (authorization.grantTypes) {
-      convertedSecurityNames[name] = [];
-
-      Object.keys(authorization.grantTypes).forEach(function(gtName) {
-        var grantType = authorization.grantTypes[gtName];
-        var oName = name + '_' + gtName;
-        var securityDefinition = createDefinition(oName);
-
-        convertedSecurityNames[name].push(oName);
-
-        if (gtName === 'implicit') {
-          securityDefinition.flow = 'implicit';
-        } else {
-          securityDefinition.flow = 'accessCode';
-        }
-
-        switch (gtName) {
-        case 'implicit':
-          securityDefinition.authorizationUrl = grantType.loginEndpoint.url;
-          break;
-
-        case 'authorization_code':
-          securityDefinition.authorizationUrl =
-            grantType.tokenRequestEndpoint.url;
-          securityDefinition.tokenUrl = grantType.tokenEndpoint.url;
-          break;
-        }
-
-        if (authorization.scopes) {
-          securityDefinition.scopes = {};
-
-          authorization.scopes.forEach(function(scope) {
-            securityDefinition.scopes[scope.scope] = scope.description ||
-              ('Undescribed ' + scope.scope);
-          });
-        }
-      });
-    } else {
-      createDefinition();
+    if (securityDefinition.type === 'basicAuth') {
+      securityDefinition.type = 'basic';
     }
+
+    if (!isValue(oldAuthorization.grantTypes)) {
+      securityDefinitions[name] = securityDefinition;
+      this.securityNamesMap[name] = [name];
+      return;
+    }
+
+    this.securityNamesMap[name] = [];
+    // For oauth2 types, 1.2 describes multiple "flows" in one authorization object.
+    // But for 2.0 we need to create one security definition per flow.
+    this.forEach(oldAuthorization.grantTypes, function(oldGrantType, gtName) {
+      var grantParameters = {};
+
+      switch (gtName) {
+      case 'implicit':
+        extend(grantParameters, {
+          flow: 'implicit',
+          authorizationUrl: getValue(oldGrantType, 'loginEndpoint', 'url')
+        });
+        break;
+
+      case 'authorization_code':
+        extend(grantParameters, {
+          flow: 'accessCode',
+          tokenUrl: getValue(oldGrantType, 'tokenEndpoint', 'url'),
+          authorizationUrl:
+            getValue(oldGrantType, 'tokenRequestEndpoint', 'url')
+        });
+        break;
+      }
+
+      var oName = name;
+      if (getLength(oldAuthorization.grantTypes) > 1) {
+        oName += '_' + grantParameters.flow;
+      }
+
+      this.securityNamesMap[name].push(oName);
+      securityDefinitions[oName] =
+        extend({}, securityDefinition, grantParameters);
+    });
   });
 
   return securityDefinitions;
@@ -808,24 +785,43 @@ function isValue(value) {
 }
 
 /*
+ * Get length of container(Array or Object).
+ * @param value {*} - container
+ * @returns {number} - length of container
+*/
+function getLength(value) {
+  if (typeof value !== 'object') {
+    return 0;
+  }
+
+  if (isValue(value.length)) {
+    return value.length;
+  }
+
+  return Object.keys(value).length;
+}
+
+/*
  * Test if value is empty
  * @param value {*} - value to test
  * @returns {boolean} - result of test
 */
 function isEmpty(value) {
-  if (!isValue(value)) {
-    return true;
-  }
+  return (getLength(value) === 0);
+}
 
-  if (typeof value !== 'object') {
-    return true;
+/*
+ * Get property value of object
+ * @param object {*} - object
+ * @returns {*} - property value
+*/
+function getValue(object) {
+  for (var i = 1; i < arguments.length && isValue(object); ++i) {
+    var propertyName = arguments[i];
+    assert(typeof propertyName === 'string');
+    object = object[propertyName];
   }
-
-  if (isValue(value.length)) {
-    return (value.length === 0);
-  }
-
-  return (Object.keys(value).length === 0);
+  return object;
 }
 
 /*
@@ -954,7 +950,7 @@ function replacer(key, value) {
   if (util.isUndefined(value)) {
     return '' + value;
   }
-  if (util.isNumber(value) && (isNaN(value) || !isFinite(value))) {
+  if (util.isNumber(value) && !isFinite(value)) {
     return value.toString();
   }
   if (util.isFunction(value) || util.isRegExp(value)) {
@@ -1093,23 +1089,22 @@ function objEquiv(a, b) {
     return false;
   // an identical 'prototype' property.
   if (a.prototype !== b.prototype) return false;
-  //~~~I've managed to break Object.keys through screwy arguments passing.
-  //   Converting to array solves the problem.
-  if (isArguments(a)) {
-    if (!isArguments(b)) {
-      return false;
-    }
+  // if one is a primitive, the other must be same
+  if (util.isPrimitive(a) || util.isPrimitive(b)) {
+    return a === b;
+  }
+  var aIsArgs = isArguments(a),
+      bIsArgs = isArguments(b);
+  if ((aIsArgs && !bIsArgs) || (!aIsArgs && bIsArgs))
+    return false;
+  if (aIsArgs) {
     a = pSlice.call(a);
     b = pSlice.call(b);
     return _deepEqual(a, b);
   }
-  try {
-    var ka = objectKeys(a),
-        kb = objectKeys(b),
-        key, i;
-  } catch (e) {//happens when one is a string literal and the other isn't
-    return false;
-  }
+  var ka = objectKeys(a),
+      kb = objectKeys(b),
+      key, i;
   // having the same number of owned properties (keys incorporates
   // hasOwnProperty)
   if (ka.length != kb.length)
@@ -1256,69 +1251,72 @@ if (typeof Object.create === 'function') {
 // shim for using process in browser
 
 var process = module.exports = {};
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
 
-process.nextTick = (function () {
-    var canSetImmediate = typeof window !== 'undefined'
-    && window.setImmediate;
-    var canMutationObserver = typeof window !== 'undefined'
-    && window.MutationObserver;
-    var canPost = typeof window !== 'undefined'
-    && window.postMessage && window.addEventListener
-    ;
-
-    if (canSetImmediate) {
-        return function (f) { return window.setImmediate(f) };
+function cleanUpNextTick() {
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
     }
-
-    var queue = [];
-
-    if (canMutationObserver) {
-        var hiddenDiv = document.createElement("div");
-        var observer = new MutationObserver(function () {
-            var queueList = queue.slice();
-            queue.length = 0;
-            queueList.forEach(function (fn) {
-                fn();
-            });
-        });
-
-        observer.observe(hiddenDiv, { attributes: true });
-
-        return function nextTick(fn) {
-            if (!queue.length) {
-                hiddenDiv.setAttribute('yes', 'no');
-            }
-            queue.push(fn);
-        };
+    if (queue.length) {
+        drainQueue();
     }
+}
 
-    if (canPost) {
-        window.addEventListener('message', function (ev) {
-            var source = ev.source;
-            if ((source === window || source === null) && ev.data === 'process-tick') {
-                ev.stopPropagation();
-                if (queue.length > 0) {
-                    var fn = queue.shift();
-                    fn();
-                }
-            }
-        }, true);
-
-        return function nextTick(fn) {
-            queue.push(fn);
-            window.postMessage('process-tick', '*');
-        };
+function drainQueue() {
+    if (draining) {
+        return;
     }
+    var timeout = setTimeout(cleanUpNextTick);
+    draining = true;
 
-    return function nextTick(fn) {
-        setTimeout(fn, 0);
-    };
-})();
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            currentQueue[queueIndex].run();
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    clearTimeout(timeout);
+}
 
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        setTimeout(drainQueue, 0);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
 process.title = 'browser';
 process.browser = true;
 process.env = {};
 process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
 
 function noop() {}
 
@@ -1339,18 +1337,24 @@ process.cwd = function () { return '/' };
 process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
+process.umask = function() { return 0; };
 
 },{}],5:[function(require,module,exports){
 (function (global){
-/*! http://mths.be/punycode v1.2.4 by @mathias */
+/*! https://mths.be/punycode v1.3.2 by @mathias */
 ;(function(root) {
 
 	/** Detect free variables */
-	var freeExports = typeof exports == 'object' && exports;
+	var freeExports = typeof exports == 'object' && exports &&
+		!exports.nodeType && exports;
 	var freeModule = typeof module == 'object' && module &&
-		module.exports == freeExports && module;
+		!module.nodeType && module;
 	var freeGlobal = typeof global == 'object' && global;
-	if (freeGlobal.global === freeGlobal || freeGlobal.window === freeGlobal) {
+	if (
+		freeGlobal.global === freeGlobal ||
+		freeGlobal.window === freeGlobal ||
+		freeGlobal.self === freeGlobal
+	) {
 		root = freeGlobal;
 	}
 
@@ -1376,8 +1380,8 @@ process.chdir = function (dir) {
 
 	/** Regular expressions */
 	regexPunycode = /^xn--/,
-	regexNonASCII = /[^ -~]/, // unprintable ASCII chars + non-ASCII chars
-	regexSeparators = /\x2E|\u3002|\uFF0E|\uFF61/g, // RFC 3490 separators
+	regexNonASCII = /[^\x20-\x7E]/, // unprintable ASCII chars + non-ASCII chars
+	regexSeparators = /[\x2E\u3002\uFF0E\uFF61]/g, // RFC 3490 separators
 
 	/** Error messages */
 	errors = {
@@ -1416,23 +1420,37 @@ process.chdir = function (dir) {
 	 */
 	function map(array, fn) {
 		var length = array.length;
+		var result = [];
 		while (length--) {
-			array[length] = fn(array[length]);
+			result[length] = fn(array[length]);
 		}
-		return array;
+		return result;
 	}
 
 	/**
-	 * A simple `Array#map`-like wrapper to work with domain name strings.
+	 * A simple `Array#map`-like wrapper to work with domain name strings or email
+	 * addresses.
 	 * @private
-	 * @param {String} domain The domain name.
+	 * @param {String} domain The domain name or email address.
 	 * @param {Function} callback The function that gets called for every
 	 * character.
 	 * @returns {Array} A new string of characters returned by the callback
 	 * function.
 	 */
 	function mapDomain(string, fn) {
-		return map(string.split(regexSeparators), fn).join('.');
+		var parts = string.split('@');
+		var result = '';
+		if (parts.length > 1) {
+			// In email addresses, only the domain name should be punycoded. Leave
+			// the local part (i.e. everything up to `@`) intact.
+			result = parts[0] + '@';
+			string = parts[1];
+		}
+		// Avoid `split(regex)` for IE8 compatibility. See #17.
+		string = string.replace(regexSeparators, '\x2E');
+		var labels = string.split('.');
+		var encoded = map(labels, fn).join('.');
+		return result + encoded;
 	}
 
 	/**
@@ -1442,7 +1460,7 @@ process.chdir = function (dir) {
 	 * UCS-2 exposes as separate characters) into a single code point,
 	 * matching UTF-16.
 	 * @see `punycode.ucs2.encode`
-	 * @see <http://mathiasbynens.be/notes/javascript-encoding>
+	 * @see <https://mathiasbynens.be/notes/javascript-encoding>
 	 * @memberOf punycode.ucs2
 	 * @name decode
 	 * @param {String} string The Unicode input string (UCS-2).
@@ -1651,8 +1669,8 @@ process.chdir = function (dir) {
 	}
 
 	/**
-	 * Converts a string of Unicode symbols to a Punycode string of ASCII-only
-	 * symbols.
+	 * Converts a string of Unicode symbols (e.g. a domain name label) to a
+	 * Punycode string of ASCII-only symbols.
 	 * @memberOf punycode
 	 * @param {String} input The string of Unicode symbols.
 	 * @returns {String} The resulting Punycode string of ASCII-only symbols.
@@ -1765,17 +1783,18 @@ process.chdir = function (dir) {
 	}
 
 	/**
-	 * Converts a Punycode string representing a domain name to Unicode. Only the
-	 * Punycoded parts of the domain name will be converted, i.e. it doesn't
-	 * matter if you call it on a string that has already been converted to
-	 * Unicode.
+	 * Converts a Punycode string representing a domain name or an email address
+	 * to Unicode. Only the Punycoded parts of the input will be converted, i.e.
+	 * it doesn't matter if you call it on a string that has already been
+	 * converted to Unicode.
 	 * @memberOf punycode
-	 * @param {String} domain The Punycode domain name to convert to Unicode.
+	 * @param {String} input The Punycoded domain name or email address to
+	 * convert to Unicode.
 	 * @returns {String} The Unicode representation of the given Punycode
 	 * string.
 	 */
-	function toUnicode(domain) {
-		return mapDomain(domain, function(string) {
+	function toUnicode(input) {
+		return mapDomain(input, function(string) {
 			return regexPunycode.test(string)
 				? decode(string.slice(4).toLowerCase())
 				: string;
@@ -1783,15 +1802,18 @@ process.chdir = function (dir) {
 	}
 
 	/**
-	 * Converts a Unicode string representing a domain name to Punycode. Only the
-	 * non-ASCII parts of the domain name will be converted, i.e. it doesn't
-	 * matter if you call it with a domain that's already in ASCII.
+	 * Converts a Unicode string representing a domain name or an email address to
+	 * Punycode. Only the non-ASCII parts of the domain name will be converted,
+	 * i.e. it doesn't matter if you call it with a domain that's already in
+	 * ASCII.
 	 * @memberOf punycode
-	 * @param {String} domain The domain name to convert, as a Unicode string.
-	 * @returns {String} The Punycode representation of the given domain name.
+	 * @param {String} input The domain name or email address to convert, as a
+	 * Unicode string.
+	 * @returns {String} The Punycode representation of the given domain name or
+	 * email address.
 	 */
-	function toASCII(domain) {
-		return mapDomain(domain, function(string) {
+	function toASCII(input) {
+		return mapDomain(input, function(string) {
 			return regexNonASCII.test(string)
 				? 'xn--' + encode(string)
 				: string;
@@ -1807,11 +1829,11 @@ process.chdir = function (dir) {
 		 * @memberOf punycode
 		 * @type String
 		 */
-		'version': '1.2.4',
+		'version': '1.3.2',
 		/**
 		 * An object of methods to convert from JavaScript's internal character
 		 * representation (UCS-2) to Unicode code points, and back.
-		 * @see <http://mathiasbynens.be/notes/javascript-encoding>
+		 * @see <https://mathiasbynens.be/notes/javascript-encoding>
 		 * @memberOf punycode
 		 * @type Object
 		 */
@@ -1836,8 +1858,8 @@ process.chdir = function (dir) {
 		define('punycode', function() {
 			return punycode;
 		});
-	} else if (freeExports && !freeExports.nodeType) {
-		if (freeModule) { // in Node.js or RingoJS v0.8.0+
+	} else if (freeExports && freeModule) {
+		if (module.exports == freeExports) { // in Node.js or RingoJS v0.8.0+
 			freeModule.exports = punycode;
 		} else { // in Narwhal or RingoJS v0.7.0-
 			for (key in punycode) {
