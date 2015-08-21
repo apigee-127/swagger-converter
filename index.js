@@ -336,7 +336,10 @@ prototype.buildTypeProperties = function(oldType) {
     return type;
   }
 
-  throw new SwaggerConverterError('Incorrect type value: ' + oldType);
+  //At this point we know that it not standart type, but at the same time we
+  //can't find such user type. To proceed futher we force it to be reference.
+  //TODO: add warning
+  return {$ref: oldType};
 };
 
 /*
@@ -526,13 +529,6 @@ prototype.buildParameter = function(oldParameter) {
   //both 'allowMultiple' is true and 'type' is array, so just ignore it.
   if (allowMultiple === true && schema.type !== 'array') {
     schema = {type: 'array', items: schema};
-  }
-
-  if (isValue(schema.$ref) ||
-    (isValue(schema.items) && isValue(schema.items.$ref)))
-  {
-    throw new SwaggerConverterError(
-      'Complex type is used inside non-body argument.');
   }
 
   //According to Swagger 2.0 spec: If the parameter is in "path",
