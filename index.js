@@ -780,6 +780,14 @@ function removeNonValues(collection) {
  * @returns {boolean} - result of test
 */
 function isValue(value) {
+  //Some implementations use empty strings as undefined.
+  //For all fields we can drop empty string without any problems.
+  //One notable exception is 'default' values, but it better to
+  //skip it instead of providing unintended value.
+  if (value === '') {
+    return false;
+  }
+
   return (value !== undefined && value !== null);
 }
 
