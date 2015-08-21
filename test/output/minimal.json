@@ -7,7 +7,6 @@
     "paths": {
         "/pets": {
             "get": {
-                "summary": "",
                 "responses": {
                     "200": {
                         "description": "Return all pets"
@@ -20,7 +19,6 @@
         },
         "/stores": {
             "get": {
-                "summary": "",
                 "responses": {
                     "200": {
                         "description": "Return all stores"
