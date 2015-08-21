@@ -43,7 +43,6 @@
                         "description": "Validation exception"
                     }
                 },
-                "description": "",
                 "summary": "Update an existing pet",
                 "operationId": "updatePet",
                 "tags": [
@@ -168,7 +167,6 @@
                         "description": "Invalid input"
                     }
                 },
-                "description": "",
                 "summary": "Updates a pet in the store with form data",
                 "operationId": "updatePetWithForm",
                 "tags": [
@@ -257,7 +255,6 @@
                         "description": "Invalid pet value"
                     }
                 },
-                "description": "",
                 "summary": "Deletes a pet",
                 "operationId": "deletePet",
                 "tags": [
@@ -294,7 +291,6 @@
                         "description": "Invalid tag value"
                     }
                 },
-                "description": "",
                 "summary": "partial updates to a pet",
                 "operationId": "partialUpdate",
                 "tags": [
@@ -335,7 +331,6 @@
                         "description": "No response was specified"
                     }
                 },
-                "description": "",
                 "summary": "uploads an image",
                 "operationId": "uploadFile",
                 "tags": [
@@ -375,7 +370,6 @@
                         "description": "No response was specified"
                     }
                 },
-                "description": "",
                 "summary": "Creates list of users with given input array",
                 "operationId": "createUsersWithArrayInput",
                 "tags": [
@@ -407,7 +401,6 @@
                         "description": "No response was specified"
                     }
                 },
-                "description": "",
                 "summary": "Creates list of users with given list input",
                 "operationId": "createUsersWithListInput",
                 "tags": [
@@ -519,7 +512,6 @@
                         "description": "User not found"
                     }
                 },
-                "description": "",
                 "summary": "Get user by user name",
                 "operationId": "getUserByName",
                 "tags": [
@@ -552,7 +544,6 @@
                         "description": "Invalid username and password combination"
                     }
                 },
-                "description": "",
                 "summary": "Logs user into the system",
                 "operationId": "loginUser",
                 "tags": [
@@ -586,7 +577,6 @@
                         "description": "No response was specified"
                     }
                 },
-                "description": "",
                 "summary": "Logs out current logged in user session",
                 "operationId": "logoutUser",
                 "tags": [
@@ -636,7 +626,6 @@
                         "description": "Invalid order"
                     }
                 },
-                "description": "",
                 "summary": "Place an order for a pet",
                 "operationId": "placeOrder",
                 "tags": [
