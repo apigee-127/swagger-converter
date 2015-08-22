@@ -307,7 +307,7 @@ prototype.buildTypeProperties = function(oldType) {
   if (!oldType) { return {}; }
 
   if (this.customTypes.indexOf(oldType) !== -1) {
-    return {$ref: oldType};
+    return {$ref: '#/definitions/' + oldType};
   }
 
   var typeMap = {
@@ -336,10 +336,37 @@ prototype.buildTypeProperties = function(oldType) {
     return type;
   }
 
+  //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
+  //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
+  var match = oldType.match(/^(.*)\[(.*)\]$/);
+  if (isValue(match)) {
+    var collection = match[1].toLowerCase();
+    var items = match[2];
+
+    //handle "Map[String,<VALUES>]" types
+    //see https://github.com/swagger-api/swagger-core/issues/244
+    if (collection === 'map') {
+      var commaIndex = items.indexOf(',');
+      var firstType = items.slice(0, commaIndex);
+      var secondType = items.slice(commaIndex + 1);
+      if (firstType.toLowerCase() === 'string') {
+        return {
+          additionalProperties: this.buildTypeProperties(secondType)
+        };
+      }
+    }
+
+    type = typeMap[collection];
+    if (isValue(type)) {
+      type.items = this.buildTypeProperties(items);
+      return type;
+    }
+  }
+
   //At this point we know that it not standart type, but at the same time we
   //can't find such user type. To proceed futher we force it to be reference.
   //TODO: add warning
-  return {$ref: oldType};
+  return {$ref: '#/definitions/' + oldType};
 };
 
 /*
@@ -356,29 +383,16 @@ prototype.buildDataType = function(oldDataType) {
   if (!oldDataType) { return {}; }
   assert(typeof oldDataType === 'object');
 
-  var oldType =
-    oldDataType.type || oldDataType.dataType || oldDataType.responseClass;
+  var result = this.buildTypeProperties(
+    oldDataType.type || oldDataType.dataType ||
+    oldDataType.responseClass || oldDataType.$ref);
+
   var oldItems = oldDataType.items;
-
-  if (isValue(oldType)) {
-    //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
-    //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
-    var match = oldType.match(/^(.*)\[(.*)\]$/);
-    if (isValue(match)) {
-      oldType = match[1];
-      oldItems = {type: match[2]};
+  if (isValue(oldItems)) {
+    if (typeof oldItems === 'string') {
+      oldItems = {type: oldItems};
     }
-  }
-
-  var result = this.buildTypeProperties(oldType);
-
-  if (typeof oldItems === 'string') {
-    oldItems = {type: oldItems};
-  }
-
-  var items;
-  if (result.type === 'array') {
-    items = this.buildDataType(oldItems);
+    oldItems = this.buildDataType(oldItems);
   }
 
   //TODO: handle '0' in default
@@ -391,18 +405,16 @@ prototype.buildDataType = function(oldDataType) {
 
   extend(result, {
     format: oldDataType.format,
-    items: items,
+    items: oldItems,
     uniqueItems: fixNonStringValue(oldDataType.uniqueItems),
     minimum: fixNonStringValue(oldDataType.minimum),
     maximum: fixNonStringValue(oldDataType.maximum),
     default: defaultValue,
     enum: oldDataType.enum,
-    $ref: oldDataType.$ref,
   });
 
-  if (isValue(result.$ref)) {
-    //TODO: better resolution based on 'id' field.
-    result.$ref = '#/definitions/' + result.$ref;
+  if (result.type === 'array' && !isValue(result.items)) {
+    result.items = {};
   }
 
   return result;
