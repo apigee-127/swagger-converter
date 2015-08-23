@@ -525,6 +525,9 @@ prototype.buildParameter = function(oldParameter) {
   var schema = this.buildDataType(oldParameter);
   if (oldParameter.paramType === 'body') {
     parameter.schema = schema;
+    if (!isValue(parameter.name)) {
+      parameter.name = 'body';
+    }
     return parameter;
   }
 
