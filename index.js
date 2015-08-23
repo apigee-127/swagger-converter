@@ -306,6 +306,8 @@ prototype.buildPathComponents = function(basePath) {
 prototype.buildTypeProperties = function(oldType) {
   if (!oldType) { return {}; }
 
+  oldType = oldType.trim();
+
   if (this.customTypes.indexOf(oldType) !== -1) {
     return {$ref: '#/definitions/' + oldType};
   }
