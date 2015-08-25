@@ -329,6 +329,7 @@ prototype.buildTypeProperties = function(oldType) {
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
     set:      {type: 'array', uniqueItems: true},
+    map:      {type: 'object'},
     void:     {},
     any:      {}
   };
@@ -340,7 +341,7 @@ prototype.buildTypeProperties = function(oldType) {
 
   //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
   //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
-  var match = oldType.match(/^(.*)\[(.*)\]$/);
+  var match = oldType.match(/^([^[]*)\[(.*)\]$/);
   if (isValue(match)) {
     var collection = match[1].toLowerCase();
     var items = match[2];
@@ -357,11 +358,12 @@ prototype.buildTypeProperties = function(oldType) {
         };
       }
     }
-
-    type = typeMap[collection];
-    if (isValue(type)) {
-      type.items = this.buildTypeProperties(items);
-      return type;
+    else {
+      type = typeMap[collection];
+      if (isValue(type)) {
+        type.items = this.buildTypeProperties(items);
+        return type;
+      }
     }
   }
 
