@@ -74,26 +74,35 @@ prototype.convert = function(resourceListing, apiDeclarations) {
     this.buildSecurityDefinitions(resourceListing.authorizations);
 
   var tags = [];
-  this.paths = {};
-  this.definitions = {};
+  var paths = {};
+  var definitions = {};
 
   if (this.isEmbeddedDocument(resourceListing)) {
-    this.convertApiDeclaration(resourceListing, undefined);
+    apiDeclarations = [resourceListing];
   }
   else {
     tags = this.buildTags(resourceListing, apiDeclarations);
-
-    this.forEach(apiDeclarations, function(declaration, index) {
-      var operationTags;
-
-      var tag = tags[index];
-      if (isValue(tag)) {
-        operationTags = [tag.name];
-      }
-
-      this.convertApiDeclaration(declaration, operationTags);
-    });
   }
+
+  this.customTypes = [];
+  this.forEach(apiDeclarations, function(resource) {
+    if (isValue(resource.models)) {
+      //TODO: check that types don't overridden
+      this.customTypes = this.customTypes.concat(Object.keys(resource.models));
+    }
+  });
+
+  this.forEach(apiDeclarations, function(declaration, index) {
+    var operationTags;
+
+    var tag = tags[index];
+    if (isValue(tag)) {
+      operationTags = [tag.name];
+    }
+
+    extend(definitions, this.buildDefinitions(declaration.models));
+    extend(paths, this.buildPaths(declaration, operationTags));
+  });
 
   return extend({},
     this.aggregatePathComponents(resourceListing, apiDeclarations),
@@ -101,9 +110,9 @@ prototype.convert = function(resourceListing, apiDeclarations) {
       swagger: '2.0',
       info: this.buildInfo(resourceListing),
       tags: undefinedIfEmpty(removeNonValues(tags)),
-      paths: undefinedIfEmpty(this.paths),
+      paths: undefinedIfEmpty(paths),
       securityDefinitions: undefinedIfEmpty(securityDefinitions),
-      definitions: undefinedIfEmpty(this.definitions)
+      definitions: undefinedIfEmpty(definitions)
     }
   );
 };
@@ -175,21 +184,6 @@ prototype.extractTag = function(resourcePath) {
 
   if (path === '') { return; }
   return path;
-};
-
-/*
- * Converts Swagger 1.2 API declaration
- * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
- * @param tags {array} - array of Swagger 2.0 tag names
-*/
-prototype.convertApiDeclaration = function(apiDeclaration, tags) {
-  this.customTypes = [];
-  if (isValue(apiDeclaration.models)) {
-    this.customTypes = Object.keys(apiDeclaration.models);
-  }
-
-  extend(this.definitions, this.buildDefinitions(apiDeclaration.models));
-  extend(this.paths, this.buildPaths(apiDeclaration, tags));
 };
 
 /*
