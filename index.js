@@ -649,10 +649,11 @@ prototype.buildModel = function(oldModel) {
 
   required = oldModel.required || required;
 
-  return extend({}, {
+  return extend(this.buildDataType(oldModel),
+  {
     description: oldModel.description,
     required: undefinedIfEmpty(required),
-    properties: properties,
+    properties: undefinedIfEmpty(properties),
     discriminator: oldModel.discriminator
   });
 };
