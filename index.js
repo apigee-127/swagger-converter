@@ -74,26 +74,35 @@ prototype.convert = function(resourceListing, apiDeclarations) {
     this.buildSecurityDefinitions(resourceListing.authorizations);
 
   var tags = [];
-  this.paths = {};
-  this.definitions = {};
+  var paths = {};
+  var definitions = {};
 
   if (this.isEmbeddedDocument(resourceListing)) {
-    this.convertApiDeclaration(resourceListing, undefined);
+    apiDeclarations = [resourceListing];
   }
   else {
     tags = this.buildTags(resourceListing, apiDeclarations);
-
-    this.forEach(apiDeclarations, function(declaration, index) {
-      var operationTags;
-
-      var tag = tags[index];
-      if (isValue(tag)) {
-        operationTags = [tag.name];
-      }
-
-      this.convertApiDeclaration(declaration, operationTags);
-    });
   }
+
+  this.customTypes = [];
+  this.forEach(apiDeclarations, function(resource) {
+    if (isValue(resource.models)) {
+      //TODO: check that types don't overridden
+      this.customTypes = this.customTypes.concat(Object.keys(resource.models));
+    }
+  });
+
+  this.forEach(apiDeclarations, function(declaration, index) {
+    var operationTags;
+
+    var tag = tags[index];
+    if (isValue(tag)) {
+      operationTags = [tag.name];
+    }
+
+    extend(definitions, this.buildDefinitions(declaration.models));
+    extend(paths, this.buildPaths(declaration, operationTags));
+  });
 
   return extend({},
     this.aggregatePathComponents(resourceListing, apiDeclarations),
@@ -101,9 +110,9 @@ prototype.convert = function(resourceListing, apiDeclarations) {
       swagger: '2.0',
       info: this.buildInfo(resourceListing),
       tags: undefinedIfEmpty(removeNonValues(tags)),
-      paths: undefinedIfEmpty(this.paths),
+      paths: undefinedIfEmpty(paths),
       securityDefinitions: undefinedIfEmpty(securityDefinitions),
-      definitions: undefinedIfEmpty(this.definitions)
+      definitions: undefinedIfEmpty(definitions)
     }
   );
 };
@@ -175,21 +184,6 @@ prototype.extractTag = function(resourcePath) {
 
   if (path === '') { return; }
   return path;
-};
-
-/*
- * Converts Swagger 1.2 API declaration
- * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
- * @param tags {array} - array of Swagger 2.0 tag names
-*/
-prototype.convertApiDeclaration = function(apiDeclaration, tags) {
-  this.customTypes = [];
-  if (isValue(apiDeclaration.models)) {
-    this.customTypes = Object.keys(apiDeclaration.models);
-  }
-
-  extend(this.definitions, this.buildDefinitions(apiDeclaration.models));
-  extend(this.paths, this.buildPaths(apiDeclaration, tags));
 };
 
 /*
@@ -303,10 +297,13 @@ prototype.buildPathComponents = function(basePath) {
  * @returns {object} - Swagger 2.0 equivalent
  * @throws {SwaggerConverterError}
  */
-prototype.buildTypeProperties = function(oldType) {
+prototype.buildTypeProperties = function(oldType, allowRef) {
   if (!oldType) { return {}; }
+  assert(typeof allowRef === 'boolean');
 
-  if (this.customTypes.indexOf(oldType) !== -1) {
+  oldType = oldType.trim();
+
+  if (allowRef && this.customTypes.indexOf(oldType) !== -1) {
     return {$ref: '#/definitions/' + oldType};
   }
 
@@ -327,6 +324,7 @@ prototype.buildTypeProperties = function(oldType) {
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
     set:      {type: 'array', uniqueItems: true},
+    map:      {type: 'object'},
     void:     {},
     any:      {}
   };
@@ -338,7 +336,7 @@ prototype.buildTypeProperties = function(oldType) {
 
   //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
   //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
-  var match = oldType.match(/^(.*)\[(.*)\]$/);
+  var match = oldType.match(/^([^[]*)\[(.*)\]$/);
   if (isValue(match)) {
     var collection = match[1].toLowerCase();
     var items = match[2];
@@ -351,22 +349,23 @@ prototype.buildTypeProperties = function(oldType) {
       var secondType = items.slice(commaIndex + 1);
       if (firstType.toLowerCase() === 'string') {
         return {
-          additionalProperties: this.buildTypeProperties(secondType)
+          additionalProperties: this.buildTypeProperties(secondType, allowRef)
         };
       }
     }
-
-    type = typeMap[collection];
-    if (isValue(type)) {
-      type.items = this.buildTypeProperties(items);
-      return type;
+    else {
+      type = typeMap[collection];
+      if (isValue(type)) {
+        type.items = this.buildTypeProperties(items, allowRef);
+        return type;
+      }
     }
   }
 
   //At this point we know that it not standart type, but at the same time we
-  //can't find such user type. To proceed futher we force it to be reference.
+  //can't find such user type. To proceed futher we just add it as is.
   //TODO: add warning
-  return {$ref: '#/definitions/' + oldType};
+  return allowRef ? {$ref: '#/definitions/' + oldType} : {type: oldType};
 };
 
 /*
@@ -379,20 +378,22 @@ prototype.buildTypeProperties = function(oldType) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-prototype.buildDataType = function(oldDataType) {
+prototype.buildDataType = function(oldDataType, allowRef) {
   if (!oldDataType) { return {}; }
   assert(typeof oldDataType === 'object');
+  assert(typeof allowRef === 'boolean');
 
-  var result = this.buildTypeProperties(
-    oldDataType.type || oldDataType.dataType ||
-    oldDataType.responseClass || oldDataType.$ref);
+  var oldTypeName = oldDataType.type || oldDataType.dataType ||
+    oldDataType.responseClass || oldDataType.$ref;
+
+  var result = this.buildTypeProperties(oldTypeName, allowRef);
 
   var oldItems = oldDataType.items;
   if (isValue(oldItems)) {
     if (typeof oldItems === 'string') {
       oldItems = {type: oldItems};
     }
-    oldItems = this.buildDataType(oldItems);
+    oldItems = this.buildDataType(oldItems, allowRef);
   }
 
   //TODO: handle '0' in default
@@ -496,7 +497,7 @@ prototype.buildResponses = function(oldOperation) {
   });
 
   extend(responses['200'], {
-    schema: undefinedIfEmpty(this.buildDataType(oldOperation))
+    schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
   });
 
   return responses;
@@ -520,11 +521,15 @@ prototype.buildParameter = function(oldParameter) {
     parameter.in = 'formData';
   }
 
-  var schema = this.buildDataType(oldParameter);
   if (oldParameter.paramType === 'body') {
-    parameter.schema = schema;
+    parameter.schema = this.buildDataType(oldParameter, true);
+    if (!isValue(parameter.name)) {
+      parameter.name = 'body';
+    }
     return parameter;
   }
+
+  var schema = this.buildDataType(oldParameter, false);
 
   //Encoding of non-body arguments is the same not matter which type is specified.
   //So type only affects parameter validation, so it "safe" to add missing types.
@@ -641,17 +646,18 @@ prototype.buildModel = function(oldModel) {
     }
 
     properties[propertyName] = extend({},
-      this.buildDataType(oldProperty),
+      this.buildDataType(oldProperty, true),
       {description: oldProperty.description}
     );
   });
 
   required = oldModel.required || required;
 
-  return extend({}, {
+  return extend(this.buildDataType(oldModel, true),
+  {
     description: oldModel.description,
     required: undefinedIfEmpty(required),
-    properties: properties,
+    properties: undefinedIfEmpty(properties),
     discriminator: oldModel.discriminator
   });
 };
