@@ -297,12 +297,13 @@ prototype.buildPathComponents = function(basePath) {
  * @returns {object} - Swagger 2.0 equivalent
  * @throws {SwaggerConverterError}
  */
-prototype.buildTypeProperties = function(oldType) {
+prototype.buildTypeProperties = function(oldType, allowRef) {
   if (!oldType) { return {}; }
+  assert(typeof allowRef === 'boolean');
 
   oldType = oldType.trim();
 
-  if (this.customTypes.indexOf(oldType) !== -1) {
+  if (allowRef && this.customTypes.indexOf(oldType) !== -1) {
     return {$ref: '#/definitions/' + oldType};
   }
 
@@ -348,23 +349,23 @@ prototype.buildTypeProperties = function(oldType) {
       var secondType = items.slice(commaIndex + 1);
       if (firstType.toLowerCase() === 'string') {
         return {
-          additionalProperties: this.buildTypeProperties(secondType)
+          additionalProperties: this.buildTypeProperties(secondType, allowRef)
         };
       }
     }
     else {
       type = typeMap[collection];
       if (isValue(type)) {
-        type.items = this.buildTypeProperties(items);
+        type.items = this.buildTypeProperties(items, allowRef);
         return type;
       }
     }
   }
 
   //At this point we know that it not standart type, but at the same time we
-  //can't find such user type. To proceed futher we force it to be reference.
+  //can't find such user type. To proceed futher we just add it as is.
   //TODO: add warning
-  return {$ref: '#/definitions/' + oldType};
+  return allowRef ? {$ref: '#/definitions/' + oldType} : {type: oldType};
 };
 
 /*
@@ -377,20 +378,22 @@ prototype.buildTypeProperties = function(oldType) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-prototype.buildDataType = function(oldDataType) {
+prototype.buildDataType = function(oldDataType, allowRef) {
   if (!oldDataType) { return {}; }
   assert(typeof oldDataType === 'object');
+  assert(typeof allowRef === 'boolean');
 
-  var result = this.buildTypeProperties(
-    oldDataType.type || oldDataType.dataType ||
-    oldDataType.responseClass || oldDataType.$ref);
+  var oldTypeName = oldDataType.type || oldDataType.dataType ||
+    oldDataType.responseClass || oldDataType.$ref;
+
+  var result = this.buildTypeProperties(oldTypeName, allowRef);
 
   var oldItems = oldDataType.items;
   if (isValue(oldItems)) {
     if (typeof oldItems === 'string') {
       oldItems = {type: oldItems};
     }
-    oldItems = this.buildDataType(oldItems);
+    oldItems = this.buildDataType(oldItems, allowRef);
   }
 
   //TODO: handle '0' in default
@@ -494,7 +497,7 @@ prototype.buildResponses = function(oldOperation) {
   });
 
   extend(responses['200'], {
-    schema: undefinedIfEmpty(this.buildDataType(oldOperation))
+    schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
   });
 
   return responses;
@@ -518,14 +521,15 @@ prototype.buildParameter = function(oldParameter) {
     parameter.in = 'formData';
   }
 
-  var schema = this.buildDataType(oldParameter);
   if (oldParameter.paramType === 'body') {
-    parameter.schema = schema;
+    parameter.schema = this.buildDataType(oldParameter, true);
     if (!isValue(parameter.name)) {
       parameter.name = 'body';
     }
     return parameter;
   }
+
+  var schema = this.buildDataType(oldParameter, false);
 
   //Encoding of non-body arguments is the same not matter which type is specified.
   //So type only affects parameter validation, so it "safe" to add missing types.
@@ -642,14 +646,14 @@ prototype.buildModel = function(oldModel) {
     }
 
     properties[propertyName] = extend({},
-      this.buildDataType(oldProperty),
+      this.buildDataType(oldProperty, true),
       {description: oldProperty.description}
     );
   });
 
   required = oldModel.required || required;
 
-  return extend(this.buildDataType(oldModel),
+  return extend(this.buildDataType(oldModel, true),
   {
     description: oldModel.description,
     required: undefinedIfEmpty(required),
