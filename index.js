@@ -352,11 +352,11 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     //see https://github.com/swagger-api/swagger-core/issues/244
     if (collection === 'map') {
       var commaIndex = items.indexOf(',');
-      var firstType = items.slice(0, commaIndex);
-      var secondType = items.slice(commaIndex + 1);
-      if (firstType.toLowerCase() === 'string') {
+      var keyType = items.slice(0, commaIndex);
+      var valueType = items.slice(commaIndex + 1);
+      if (keyType.toLowerCase() === 'string') {
         return {
-          additionalProperties: this.buildTypeProperties(secondType, allowRef)
+          additionalProperties: this.buildTypeProperties(valueType, allowRef)
         };
       }
     }
