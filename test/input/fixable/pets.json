@@ -4,7 +4,7 @@
   "basePath": ".",
   "apis": [
     {
-      "path": "/pets",
+      "path": "pets",
       "operations": [
         {
           "method": "GET",
@@ -35,6 +35,18 @@
               "paramType": "query",
               "type": "integer",
               "default": "BadValue"
+            },
+            {
+              "name": "EmptyStringAsRequired",
+              "paramType": "query",
+              "type": "integer",
+              "required": ""
+            },
+            {
+              "name": "InvalidBoolAsRequired",
+              "paramType": "query",
+              "type": "integer",
+              "required": "False"
             }
           ],
           "responseMessages": [
@@ -49,8 +61,17 @@
   ],
   "models": {
     "BrokenModel": {
-       "description": "Unofficial map type",
-       "type": "Map[String, Integer]"
+      "properties": {
+        "map": {
+          "description": "Unofficial map type",
+          "type": "Map[String, Integer]"
+        },
+        "required": {
+          "description": "Per-property required",
+          "type": "string",
+          "required": true
+        }
+      }
     }
   }
 }
