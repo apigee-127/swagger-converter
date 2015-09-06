@@ -716,6 +716,9 @@
         }
     },
     "securityDefinitions": {
+        "basic": {
+            "type": "basic"
+        },
         "oauth2_implicit": {
             "type": "oauth2",
             "flow": "implicit",

@@ -38,6 +38,16 @@
             "required": false,
             "type": "string",
             "default": "latest"
+          },
+          {
+            "description": "The array of document IDs",
+            "in": "query",
+            "items": {
+              "type": "string"
+            },
+            "name": "documentIds",
+            "required": false,
+            "type": "array"
           }
         ],
         "responses": {
