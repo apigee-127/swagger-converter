@@ -42,6 +42,17 @@
                         "in": "query",
                         "name": "InvalidDefault",
                         "type": "integer"
+                    },
+                    {
+                        "in": "query",
+                        "name": "EmptyStringAsRequired",
+                        "type": "integer"
+                    },
+                    {
+                        "in": "query",
+                        "name": "InvalidBoolAsRequired",
+                        "required": false,
+                        "type": "integer"
                     }
                 ],
                 "responses": {
@@ -63,10 +74,21 @@
     },
     "definitions": {
         "BrokenModel": {
-            "additionalProperties": {
-                "type": "integer"
-            },
-            "description": "Unofficial map type"
+            "required": [
+                "required"
+            ],
+            "properties": {
+                "map": {
+                    "additionalProperties": {
+                        "type": "integer"
+                    },
+                    "description": "Unofficial map type"
+                },
+                "required": {
+                    "type": "string",
+                    "description": "Per-property required"
+                }
+            }
         }
     }
 }
