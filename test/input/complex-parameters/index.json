@@ -41,6 +41,13 @@
               "required": false,
               "type": "string",
               "defaultValue": "latest"
+            },
+            {
+              "name": "documentIds",
+              "paramType": "query",
+              "description": "The array of document IDs",
+              "required": false,
+              "type": "List[string]"
             }
           ],
           "responseMessages": [

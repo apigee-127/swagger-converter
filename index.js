@@ -125,9 +125,7 @@ prototype.convert = function(resourceListing, apiDeclarations) {
  * @returns {array} - list of Swagger 2.0 tags
 */
 Converter.prototype.buildTags = function(resourceListing, apiDeclarations) {
-  if (isEmpty(apiDeclarations)) {
-    return [];
-  }
+  assert(!isEmpty(apiDeclarations));
 
   var paths = [];
   this.forEach(apiDeclarations, function(declaration) {
