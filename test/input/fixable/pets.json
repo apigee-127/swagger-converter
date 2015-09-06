@@ -1,0 +1,56 @@
+{
+  "apiVersion": "1.0.0",
+  "swaggerVersion": "1.2",
+  "basePath": ".",
+  "apis": [
+    {
+      "path": "/pets",
+      "operations": [
+        {
+          "method": "GET",
+          "summary": "",
+          "parameters": [
+            {
+              "description": "Body parameter with missing name",
+              "paramType": "body",
+              "type": "BrokenModel"
+            },
+            {
+              "name": "ItemsIsString",
+              "paramType": "query",
+              "type": "array",
+              "items": "string"
+            },
+            {
+              "name": "MissingItems",
+              "paramType": "query",
+              "type": "array"
+            },
+            {
+              "name": "MissingType",
+              "paramType": "query"
+            },
+            {
+              "name": "InvalidDefault",
+              "paramType": "query",
+              "type": "integer",
+              "default": "BadValue"
+            }
+          ],
+          "responseMessages": [
+            {
+              "code": 200,
+              "message": "Return all pets"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "models": {
+    "BrokenModel": {
+       "description": "Unofficial map type",
+       "type": "Map[String, Integer]"
+    }
+  }
+}

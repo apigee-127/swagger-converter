@@ -25,6 +25,7 @@
 
 var assert = require('assert');
 var urlParse = require('url').parse;
+var urlResolve = require('url').resolve;
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -124,9 +125,7 @@ prototype.convert = function(resourceListing, apiDeclarations) {
  * @returns {array} - list of Swagger 2.0 tags
 */
 Converter.prototype.buildTags = function(resourceListing, apiDeclarations) {
-  if (isEmpty(apiDeclarations)) {
-    return [];
-  }
+  assert(!isEmpty(apiDeclarations));
 
   var paths = [];
   this.forEach(apiDeclarations, function(declaration) {
@@ -257,18 +256,24 @@ prototype.buildInfo = function(resourceListing) {
 prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
   var path = extend({}, this.buildPathComponents(resourceListing.basePath));
 
-  var basePath;
+  var globalBasePath;
   this.forEach(apiDeclarations, function(api) {
+    var basePath = api.basePath;
+    //Test if basePath is relative(start with '.' or '..').
+    if (/^\.\.?(\/|$)/.test(basePath)) {
+      basePath = urlResolve(path.basePath, basePath);
+    }
+
     //TODO: Swagger 1.2 support per resouce 'basePath', but Swagger 2.0 doesn't
     // solution could be to create separate spec per each 'basePath'.
-    if (isValue(basePath) && api.basePath !== basePath) {
+    if (isValue(globalBasePath) && basePath !== globalBasePath) {
       throw new SwaggerConverterError(
         'Resources can not override each other basePaths');
     }
-    basePath = api.basePath;
+    globalBasePath = basePath;
   });
 
-  return extend(path, this.buildPathComponents(basePath));
+  return extend(path, this.buildPathComponents(globalBasePath));
 };
 
 /*
@@ -345,11 +350,11 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     //see https://github.com/swagger-api/swagger-core/issues/244
     if (collection === 'map') {
       var commaIndex = items.indexOf(',');
-      var firstType = items.slice(0, commaIndex);
-      var secondType = items.slice(commaIndex + 1);
-      if (firstType.toLowerCase() === 'string') {
+      var keyType = items.slice(0, commaIndex);
+      var valueType = items.slice(commaIndex + 1);
+      if (keyType.toLowerCase() === 'string') {
         return {
-          additionalProperties: this.buildTypeProperties(secondType, allowRef)
+          additionalProperties: this.buildTypeProperties(valueType, allowRef)
         };
       }
     }

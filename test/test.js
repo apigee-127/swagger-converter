@@ -38,6 +38,14 @@ var inputs = [
     resourceListing: 'complex-parameters/index.json',
     apiDeclarations: [],
     output: 'complex-parameters.json'
+  },
+  {
+    resourceListing: 'fixable/index.json',
+    apiDeclarations: [
+      'fixable/pets.json',
+      'fixable/stores.json'
+    ],
+    output: 'fixable.json'
   }
 ];
 
