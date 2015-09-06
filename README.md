@@ -2,6 +2,7 @@
 
 [![NPM version][npm-image]][npm-link]
 [![Build status][travis-image]][travis-link]
+[![Coverage Status][coverage-badge]
 [![Dependency status][deps-image]][deps-link]
 [![devDependency status][devdeps-image]][devdeps-link]
 
@@ -78,3 +79,4 @@ MIT. See [LICENSE](./LICENSE)
 [devdeps-link]: https://david-dm.org/apigee-127/swagger-converter#info=devDependencies
 [swagger-tools-npm]: https://www.npmjs.com/package/swagger-tools
 [swagger-spec-converter]: https://github.com/lucybot/api-spec-converter
+[coverage-badge]: https://coveralls.io/repos/apigee-127/swagger-converter/badge.svg?branch=master&service=github)](https://coveralls.io/github/apigee-127/swagger-converter?branch=master

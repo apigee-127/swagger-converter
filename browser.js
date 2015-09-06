@@ -26,6 +26,7 @@
 
 var assert = require('assert');
 var urlParse = require('url').parse;
+var urlResolve = require('url').resolve;
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -75,26 +76,35 @@ prototype.convert = function(resourceListing, apiDeclarations) {
     this.buildSecurityDefinitions(resourceListing.authorizations);
 
   var tags = [];
-  this.paths = {};
-  this.definitions = {};
+  var paths = {};
+  var definitions = {};
 
   if (this.isEmbeddedDocument(resourceListing)) {
-    this.convertApiDeclaration(resourceListing, undefined);
+    apiDeclarations = [resourceListing];
   }
   else {
     tags = this.buildTags(resourceListing, apiDeclarations);
-
-    this.forEach(apiDeclarations, function(declaration, index) {
-      var operationTags;
-
-      var tag = tags[index];
-      if (isValue(tag)) {
-        operationTags = [tag.name];
-      }
-
-      this.convertApiDeclaration(declaration, operationTags);
-    });
   }
+
+  this.customTypes = [];
+  this.forEach(apiDeclarations, function(resource) {
+    if (isValue(resource.models)) {
+      //TODO: check that types don't overridden
+      this.customTypes = this.customTypes.concat(Object.keys(resource.models));
+    }
+  });
+
+  this.forEach(apiDeclarations, function(declaration, index) {
+    var operationTags;
+
+    var tag = tags[index];
+    if (isValue(tag)) {
+      operationTags = [tag.name];
+    }
+
+    extend(definitions, this.buildDefinitions(declaration.models));
+    extend(paths, this.buildPaths(declaration, operationTags));
+  });
 
   return extend({},
     this.aggregatePathComponents(resourceListing, apiDeclarations),
@@ -102,9 +112,9 @@ prototype.convert = function(resourceListing, apiDeclarations) {
       swagger: '2.0',
       info: this.buildInfo(resourceListing),
       tags: undefinedIfEmpty(removeNonValues(tags)),
-      paths: undefinedIfEmpty(this.paths),
+      paths: undefinedIfEmpty(paths),
       securityDefinitions: undefinedIfEmpty(securityDefinitions),
-      definitions: undefinedIfEmpty(this.definitions)
+      definitions: undefinedIfEmpty(definitions)
     }
   );
 };
@@ -116,9 +126,7 @@ prototype.convert = function(resourceListing, apiDeclarations) {
  * @returns {array} - list of Swagger 2.0 tags
 */
 Converter.prototype.buildTags = function(resourceListing, apiDeclarations) {
-  if (isEmpty(apiDeclarations)) {
-    return [];
-  }
+  assert(!isEmpty(apiDeclarations));
 
   var paths = [];
   this.forEach(apiDeclarations, function(declaration) {
@@ -176,21 +184,6 @@ prototype.extractTag = function(resourcePath) {
 
   if (path === '') { return; }
   return path;
-};
-
-/*
- * Converts Swagger 1.2 API declaration
- * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
- * @param tags {array} - array of Swagger 2.0 tag names
-*/
-prototype.convertApiDeclaration = function(apiDeclaration, tags) {
-  this.customTypes = [];
-  if (isValue(apiDeclaration.models)) {
-    this.customTypes = Object.keys(apiDeclaration.models);
-  }
-
-  extend(this.definitions, this.buildDefinitions(apiDeclaration.models));
-  extend(this.paths, this.buildPaths(apiDeclaration, tags));
 };
 
 /*
@@ -264,18 +257,24 @@ prototype.buildInfo = function(resourceListing) {
 prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
   var path = extend({}, this.buildPathComponents(resourceListing.basePath));
 
-  var basePath;
+  var globalBasePath;
   this.forEach(apiDeclarations, function(api) {
-    //TODO: Swagger 1.2 support per resouce 'basePath', but Swagger 2.0 doesn't
+    var basePath = api.basePath;
+    //Test if basePath is relative(start with '.' or '..').
+    if (/^\.\.?(\/|$)/.test(basePath)) {
+      basePath = urlResolve(path.basePath, basePath);
+    }
+
+    //TODO: Swagger 1.2 support per resource 'basePath', but Swagger 2.0 doesn't
     // solution could be to create separate spec per each 'basePath'.
-    if (isValue(basePath) && api.basePath !== basePath) {
+    if (isValue(globalBasePath) && basePath !== globalBasePath) {
       throw new SwaggerConverterError(
         'Resources can not override each other basePaths');
     }
-    basePath = api.basePath;
+    globalBasePath = basePath;
   });
 
-  return extend(path, this.buildPathComponents(basePath));
+  return extend(path, this.buildPathComponents(globalBasePath));
 };
 
 /*
@@ -297,18 +296,21 @@ prototype.buildPathComponents = function(basePath) {
 };
 
 /*
- * Builds a Swagger 2.0 type properites from a Swagger 1.2 type properties
+ * Builds a Swagger 2.0 type properties from a Swagger 1.2 type properties
  *
  * @param oldDataType {object} - Swagger 1.2 type object
  *
  * @returns {object} - Swagger 2.0 equivalent
  * @throws {SwaggerConverterError}
  */
-prototype.buildTypeProperties = function(oldType) {
+prototype.buildTypeProperties = function(oldType, allowRef) {
   if (!oldType) { return {}; }
+  assert(typeof allowRef === 'boolean');
 
-  if (this.customTypes.indexOf(oldType) !== -1) {
-    return {$ref: oldType};
+  oldType = oldType.trim();
+
+  if (allowRef && this.customTypes.indexOf(oldType) !== -1) {
+    return {$ref: '#/definitions/' + oldType};
   }
 
   var typeMap = {
@@ -328,6 +330,7 @@ prototype.buildTypeProperties = function(oldType) {
     datetime: {type: 'string',  format: 'date-time'},
     list:     {type: 'array'},
     set:      {type: 'array', uniqueItems: true},
+    map:      {type: 'object'},
     void:     {},
     any:      {}
   };
@@ -337,11 +340,42 @@ prototype.buildTypeProperties = function(oldType) {
     return type;
   }
 
-  throw new SwaggerConverterError('Incorrect type value: ' + oldType);
+  //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
+  //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
+  var match = oldType.match(/^([^[]*)\[(.*)\]$/);
+  if (isValue(match)) {
+    var collection = match[1].toLowerCase();
+    var items = match[2];
+
+    //handle "Map[String,<VALUES>]" types
+    //see https://github.com/swagger-api/swagger-core/issues/244
+    if (collection === 'map') {
+      var commaIndex = items.indexOf(',');
+      var keyType = items.slice(0, commaIndex);
+      var valueType = items.slice(commaIndex + 1);
+      if (keyType.toLowerCase() === 'string') {
+        return {
+          additionalProperties: this.buildTypeProperties(valueType, allowRef)
+        };
+      }
+    }
+    else {
+      type = typeMap[collection];
+      if (isValue(type)) {
+        type.items = this.buildTypeProperties(items, allowRef);
+        return type;
+      }
+    }
+  }
+
+  //At this point we know that it not standard type, but at the same time we
+  //can't find such user type. To proceed further we just add it as is.
+  //TODO: add warning
+  return allowRef ? {$ref: '#/definitions/' + oldType} : {type: oldType};
 };
 
 /*
- * Builds a Swagger 2.0 data type properites from a Swagger 1.2 data type properties
+ * Builds a Swagger 2.0 data type properties from a Swagger 1.2 data type properties
  *
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
  *  1.2.md#433-data-type-fields}
@@ -350,33 +384,22 @@ prototype.buildTypeProperties = function(oldType) {
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
-prototype.buildDataType = function(oldDataType) {
+prototype.buildDataType = function(oldDataType, allowRef) {
   if (!oldDataType) { return {}; }
   assert(typeof oldDataType === 'object');
+  assert(typeof allowRef === 'boolean');
 
-  var oldType =
-    oldDataType.type || oldDataType.dataType || oldDataType.responseClass;
+  var oldTypeName = oldDataType.type || oldDataType.dataType ||
+    oldDataType.responseClass || oldDataType.$ref;
+
+  var result = this.buildTypeProperties(oldTypeName, allowRef);
+
   var oldItems = oldDataType.items;
-
-  if (isValue(oldType)) {
-    //handle "<TYPE>[<ITEMS>]" types from 1.1 spec
-    //use RegEx with capture groups to get <TYPE> and <ITEMS> values.
-    var match = oldType.match(/^(.*)\[(.*)\]$/);
-    if (isValue(match)) {
-      oldType = match[1];
-      oldItems = {type: match[2]};
+  if (isValue(oldItems)) {
+    if (typeof oldItems === 'string') {
+      oldItems = {type: oldItems};
     }
-  }
-
-  var result = this.buildTypeProperties(oldType);
-
-  if (typeof oldItems === 'string') {
-    oldItems = {type: oldItems};
-  }
-
-  var items;
-  if (result.type === 'array') {
-    items = this.buildDataType(oldItems);
+    oldItems = this.buildDataType(oldItems, allowRef);
   }
 
   //TODO: handle '0' in default
@@ -389,18 +412,16 @@ prototype.buildDataType = function(oldDataType) {
 
   extend(result, {
     format: oldDataType.format,
-    items: items,
+    items: oldItems,
     uniqueItems: fixNonStringValue(oldDataType.uniqueItems),
     minimum: fixNonStringValue(oldDataType.minimum),
     maximum: fixNonStringValue(oldDataType.maximum),
     default: defaultValue,
     enum: oldDataType.enum,
-    $ref: oldDataType.$ref,
   });
 
-  if (isValue(result.$ref)) {
-    //TODO: better resolution based on 'id' field.
-    result.$ref = '#/definitions/' + result.$ref;
+  if (result.type === 'array' && !isValue(result.items)) {
+    result.items = {};
   }
 
   return result;
@@ -482,7 +503,7 @@ prototype.buildResponses = function(oldOperation) {
   });
 
   extend(responses['200'], {
-    schema: undefinedIfEmpty(this.buildDataType(oldOperation))
+    schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
   });
 
   return responses;
@@ -506,11 +527,15 @@ prototype.buildParameter = function(oldParameter) {
     parameter.in = 'formData';
   }
 
-  var schema = this.buildDataType(oldParameter);
   if (oldParameter.paramType === 'body') {
-    parameter.schema = schema;
+    parameter.schema = this.buildDataType(oldParameter, true);
+    if (!isValue(parameter.name)) {
+      parameter.name = 'body';
+    }
     return parameter;
   }
+
+  var schema = this.buildDataType(oldParameter, false);
 
   //Encoding of non-body arguments is the same not matter which type is specified.
   //So type only affects parameter validation, so it "safe" to add missing types.
@@ -529,13 +554,6 @@ prototype.buildParameter = function(oldParameter) {
     schema = {type: 'array', items: schema};
   }
 
-  if (isValue(schema.$ref) ||
-    (isValue(schema.items) && isValue(schema.items.$ref)))
-  {
-    throw new SwaggerConverterError(
-      'Complex type is used inside non-body argument.');
-  }
-
   //According to Swagger 2.0 spec: If the parameter is in "path",
   //this property is required and its value MUST be true.
   if (parameter.in === 'path') {
@@ -546,7 +564,7 @@ prototype.buildParameter = function(oldParameter) {
 };
 
 /*
- * Convertes Swagger 1.2 authorization definitions into Swagger 2.0 definitions
+ * Converts Swagger 1.2 authorization definitions into Swagger 2.0 definitions
  * Definitions couldn't be converted 1 to 1, 'this.securityNamesMap' should be
  * used to map between Swagger 1.2 names and one or more Swagger 2.0 names.
  *
@@ -582,8 +600,8 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
     }
 
     this.securityNamesMap[name] = [];
-    // For oauth2 types, 1.2 describes multiple "flows" in one authorization object.
-    // But for 2.0 we need to create one security definition per flow.
+    // For OAuth2 types, 1.2 describes multiple "flows" in one authorization
+    // object. But for 2.0 we need to create one security definition per flow.
     this.forEach(oldAuthorization.grantTypes, function(oldGrantType, gtName) {
       var grantParameters = {};
 
@@ -620,7 +638,7 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
 };
 
 /*
- * Convertes a Swagger 1.2 model object to a Swagger 2.0 model object
+ * Converts a Swagger 1.2 model object to a Swagger 2.0 model object
  * @param model {object} - Swagger 1.2 model object
  * @returns {object} - Swagger 2.0 model object
 */
@@ -634,23 +652,24 @@ prototype.buildModel = function(oldModel) {
     }
 
     properties[propertyName] = extend({},
-      this.buildDataType(oldProperty),
+      this.buildDataType(oldProperty, true),
       {description: oldProperty.description}
     );
   });
 
   required = oldModel.required || required;
 
-  return extend({}, {
+  return extend(this.buildDataType(oldModel, true),
+  {
     description: oldModel.description,
     required: undefinedIfEmpty(required),
-    properties: properties,
+    properties: undefinedIfEmpty(properties),
     discriminator: oldModel.discriminator
   });
 };
 
 /*
- * Convertes the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
+ * Converts the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
  * object
  * @param oldModels {object} - an object containing Swagger 1.2 objects
  * @returns {object} - Swagger 2.0 definitions object
@@ -781,6 +800,14 @@ function removeNonValues(collection) {
  * @returns {boolean} - result of test
 */
 function isValue(value) {
+  //Some implementations use empty strings as undefined.
+  //For all fields we can drop empty string without any problems.
+  //One notable exception is 'default' values, but it better to
+  //skip it instead of providing unintended value.
+  if (value === '') {
+    return false;
+  }
+
   return (value !== undefined && value !== null);
 }
 
@@ -828,7 +855,7 @@ function getValue(object) {
  * Convert string values into the proper type.
  * @param value {*} - value to convert
  * @param skipError {boolean} - skip error during conversion
- * @returns {*} - transformed modles object
+ * @returns {*} - transformed model object
  * @throws {SwaggerConverterError}
 */
 function fixNonStringValue(value, skipError) {
