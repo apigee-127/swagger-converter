@@ -16,6 +16,9 @@
     }
   ],
   "authorizations": {
+    "basic": {
+      "type": "basicAuth"
+    },
     "oauth2": {
       "type": "oauth2",
       "scopes": [

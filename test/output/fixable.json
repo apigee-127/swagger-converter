@@ -1,0 +1,72 @@
+{
+    "basePath": "/v1",
+    "swagger": "2.0",
+    "info": {
+        "title": "Title was not specified",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/pets": {
+            "get": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "description": "Body parameter with missing name",
+                        "schema": {
+                            "$ref": "#/definitions/BrokenModel"
+                        },
+                        "name": "body"
+                    },
+                    {
+                        "in": "query",
+                        "name": "ItemsIsString",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "MissingItems",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "MissingType",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "InvalidDefault",
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return all pets"
+                    }
+                }
+            }
+        },
+        "/stores": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Return all stores"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "BrokenModel": {
+            "additionalProperties": {
+                "type": "integer"
+            },
+            "description": "Unofficial map type"
+        }
+    }
+}
