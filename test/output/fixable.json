@@ -1,5 +1,5 @@
 {
-    "basePath": "/v1",
+    "basePath": "/v1/",
     "swagger": "2.0",
     "info": {
         "title": "Title was not specified",
