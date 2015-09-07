@@ -24,8 +24,8 @@
 'use strict';
 
 var assert = require('assert');
-var urlParse = require('url').parse;
-var urlResolve = require('url').resolve;
+var urlParse = require('./url').parse;
+var urlResolve = require('./url').resolve;
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -264,7 +264,7 @@ prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
       basePath = urlResolve(path.basePath, basePath);
     }
 
-    //TODO: Swagger 1.2 support per resouce 'basePath', but Swagger 2.0 doesn't
+    //TODO: Swagger 1.2 support per resource 'basePath', but Swagger 2.0 doesn't
     // solution could be to create separate spec per each 'basePath'.
     if (isValue(globalBasePath) && basePath !== globalBasePath) {
       throw new SwaggerConverterError(
@@ -295,7 +295,7 @@ prototype.buildPathComponents = function(basePath) {
 };
 
 /*
- * Builds a Swagger 2.0 type properites from a Swagger 1.2 type properties
+ * Builds a Swagger 2.0 type properties from a Swagger 1.2 type properties
  *
  * @param oldDataType {object} - Swagger 1.2 type object
  *
@@ -367,14 +367,14 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     }
   }
 
-  //At this point we know that it not standart type, but at the same time we
-  //can't find such user type. To proceed futher we just add it as is.
+  //At this point we know that it not standard type, but at the same time we
+  //can't find such user type. To proceed further we just add it as is.
   //TODO: add warning
   return allowRef ? {$ref: '#/definitions/' + oldType} : {type: oldType};
 };
 
 /*
- * Builds a Swagger 2.0 data type properites from a Swagger 1.2 data type properties
+ * Builds a Swagger 2.0 data type properties from a Swagger 1.2 data type properties
  *
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
  *  1.2.md#433-data-type-fields}
@@ -563,7 +563,7 @@ prototype.buildParameter = function(oldParameter) {
 };
 
 /*
- * Convertes Swagger 1.2 authorization definitions into Swagger 2.0 definitions
+ * Converts Swagger 1.2 authorization definitions into Swagger 2.0 definitions
  * Definitions couldn't be converted 1 to 1, 'this.securityNamesMap' should be
  * used to map between Swagger 1.2 names and one or more Swagger 2.0 names.
  *
@@ -599,8 +599,8 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
     }
 
     this.securityNamesMap[name] = [];
-    // For oauth2 types, 1.2 describes multiple "flows" in one authorization object.
-    // But for 2.0 we need to create one security definition per flow.
+    // For OAuth2 types, 1.2 describes multiple "flows" in one authorization
+    // object. But for 2.0 we need to create one security definition per flow.
     this.forEach(oldAuthorization.grantTypes, function(oldGrantType, gtName) {
       var grantParameters = {};
 
@@ -637,7 +637,7 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
 };
 
 /*
- * Convertes a Swagger 1.2 model object to a Swagger 2.0 model object
+ * Converts a Swagger 1.2 model object to a Swagger 2.0 model object
  * @param model {object} - Swagger 1.2 model object
  * @returns {object} - Swagger 2.0 model object
 */
@@ -668,7 +668,7 @@ prototype.buildModel = function(oldModel) {
 };
 
 /*
- * Convertes the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
+ * Converts the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
  * object
  * @param oldModels {object} - an object containing Swagger 1.2 objects
  * @returns {object} - Swagger 2.0 definitions object
@@ -854,7 +854,7 @@ function getValue(object) {
  * Convert string values into the proper type.
  * @param value {*} - value to convert
  * @param skipError {boolean} - skip error during conversion
- * @returns {*} - transformed modles object
+ * @returns {*} - transformed model object
  * @throws {SwaggerConverterError}
 */
 function fixNonStringValue(value, skipError) {
