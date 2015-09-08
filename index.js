@@ -24,8 +24,7 @@
 'use strict';
 
 var assert = require('assert');
-var urlParse = require('./url').parse;
-var urlResolve = require('./url').resolve;
+var URI = require('URIjs');
 
 if (typeof window === 'undefined') {
   module.exports = convert;
@@ -171,18 +170,13 @@ Converter.prototype.buildTags = function(resourceListing, apiDeclarations) {
  * @returns {string} - tag name
 */
 prototype.extractTag = function(resourcePath) {
-  if (!isValue(resourcePath)) { return; }
+  var tag = URI(resourcePath || '').path(true)
+    .replace('{format}', 'json')
+    .replace(/\/$/, '')
+    .replace(/.json$/, '')
+    .split(['/']).pop();
 
-  var path = urlParse(resourcePath).path;
-  if (!isValue(path)) { return; }
-
-  path = path.replace(/\/$/, '');
-  path = path.replace('{format}', 'json');
-  path = path.replace(/.json$/, '');
-  path = path.split(['/']).pop();
-
-  if (path === '') { return; }
-  return path;
+  return tag || undefined;
 };
 
 /*
@@ -261,7 +255,7 @@ prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
     var basePath = api.basePath;
     //Test if basePath is relative(start with '.' or '..').
     if (/^\.\.?(\/|$)/.test(basePath)) {
-      basePath = urlResolve(path.basePath, basePath);
+      basePath = URI(basePath).absoluteTo(path.basePath).path(true);
     }
 
     //TODO: Swagger 1.2 support per resource 'basePath', but Swagger 2.0 doesn't
@@ -285,13 +279,13 @@ prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
 prototype.buildPathComponents = function(basePath) {
   if (!basePath) { return {}; }
 
-  var url = urlParse(basePath);
-  return {
-    host: url.host,
-    basePath: absolutePath(url.path) || '/',
-    //url.protocol include traling colon
-    schemes: url.protocol && [url.protocol.slice(0, -1)]
-  };
+  var url = URI(basePath).absoluteTo('/');
+  var protocol = url.protocol();
+  return extend({}, {
+    host: url.host(),
+    basePath: url.path(true),
+    schemes: protocol && [protocol]
+  });
 };
 
 /*
@@ -444,7 +438,8 @@ prototype.buildPaths = function(apiDeclaration, tags) {
   this.forEach(apiDeclaration.apis, function(api) {
     if (!isValue(api.operations)) { return; }
 
-    var pathString = absolutePath(api.path).replace('{format}', 'json');
+    var pathString = URI(api.path).absoluteTo('/').path(true);
+    pathString = pathString.replace('{format}', 'json');
     var path = paths[pathString] = {};
 
     this.forEach(api.operations, function(oldOperation) {
@@ -749,18 +744,6 @@ function extend(destination) {
     assign(arguments[i]);
   }
   return destination;
-}
-
-/*
- * Convert any path into absolute path
- * @param path {string} - path to convert
- * @returns {string} - result
-*/
-function absolutePath(path) {
-  if (isValue(path) && path.charAt(0) !== '/') {
-    return '/' + path;
-  }
-  return path;
 }
 
 /*

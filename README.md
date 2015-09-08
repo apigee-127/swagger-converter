@@ -2,7 +2,7 @@
 
 [![NPM version][npm-image]][npm-link]
 [![Build status][travis-image]][travis-link]
-[![Coverage Status][coverage-badge]
+[![Coverage Status][coveralls-image]][coveralls-link]
 [![Dependency status][deps-image]][deps-link]
 [![devDependency status][devdeps-image]][devdeps-link]
 
@@ -73,10 +73,11 @@ MIT. See [LICENSE](./LICENSE)
 [npm-link]: https://npmjs.org/package/swagger-converter
 [travis-image]: https://img.shields.io/travis/apigee-127/swagger-converter.svg?style=flat
 [travis-link]: https://travis-ci.org/apigee-127/swagger-converter
+[coveralls-image]: https://coveralls.io/repos/apigee-127/swagger-converter/badge.svg?branch=master&service=github
+[coveralls-link]: https://coveralls.io/github/apigee-127/swagger-converter?branch=master
 [deps-image]: https://img.shields.io/david/apigee-127/swagger-converter.svg?style=flat
 [deps-link]: https://david-dm.org/apigee-127/swagger-converter
 [devdeps-image]: https://img.shields.io/david/dev/apigee-127/swagger-converter.svg?style=flat
 [devdeps-link]: https://david-dm.org/apigee-127/swagger-converter#info=devDependencies
 [swagger-tools-npm]: https://www.npmjs.com/package/swagger-tools
 [swagger-spec-converter]: https://github.com/lucybot/api-spec-converter
-[coverage-badge]: https://coveralls.io/repos/apigee-127/swagger-converter/badge.svg?branch=master&service=github)](https://coveralls.io/github/apigee-127/swagger-converter?branch=master
