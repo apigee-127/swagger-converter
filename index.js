@@ -49,11 +49,16 @@ SwaggerConverterError.prototype.name = 'SwaggerConverterError';
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
  * @param resourceListing {object} - root Swagger 1.2 document where it has a
  *  list of all paths
- * @param apiDeclarations {array} - a list of all resources listed in
- * resourceListing. Array of objects
+ * @param apiDeclarations {object} - a map with paths as keys and resources as values
  * @returns {object} - Fully converted Swagger 2.0 document
 */
 function convert(resourceListing, apiDeclarations) {
+  if (Array.isArray(apiDeclarations)) {
+    throw new SwaggerConverterError(
+      'Second argument(apiDeclarations) should be plain object, ' +
+      'see release notes.');
+  }
+
   var converter = new Converter();
   return converter.convert(resourceListing, apiDeclarations);
 }
@@ -64,35 +69,29 @@ var prototype = Converter.prototype;
 /*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
  * @param resourceListing {object} - root of Swagger 1.2 document
- * @param apiDeclarations {array} - a list of resources
+ * @param apiDeclarations {object} - a map with paths as keys and resources as values
  * @returns {object} - Fully converted Swagger 2.0 document
 */
 prototype.convert = function(resourceListing, apiDeclarations) {
   assert(typeof resourceListing === 'object');
+  assert(typeof apiDeclarations === 'object');
 
+  var resources = this.getResources(resourceListing, apiDeclarations);
+  var tags = this.buildTags(resourceListing, resources);
   var securityDefinitions =
     this.buildSecurityDefinitions(resourceListing.authorizations);
-
-  var tags = [];
   var paths = {};
   var definitions = {};
 
-  if (this.isEmbeddedDocument(resourceListing)) {
-    apiDeclarations = [resourceListing];
-  }
-  else {
-    tags = this.buildTags(resourceListing, apiDeclarations);
-  }
-
   this.customTypes = [];
-  this.forEach(apiDeclarations, function(resource) {
+  this.forEach(resources, function(resource) {
     if (isValue(resource.models)) {
       //TODO: check that types don't overridden
       this.customTypes = this.customTypes.concat(Object.keys(resource.models));
     }
   });
 
-  this.forEach(apiDeclarations, function(declaration, index) {
+  this.forEach(resources, function(resource, index) {
     var operationTags;
 
     var tag = tags[index];
@@ -100,8 +99,8 @@ prototype.convert = function(resourceListing, apiDeclarations) {
       operationTags = [tag.name];
     }
 
-    extend(definitions, this.buildDefinitions(declaration.models));
-    extend(paths, this.buildPaths(declaration, operationTags));
+    extend(definitions, this.buildDefinitions(resource.models));
+    extend(paths, this.buildPaths(resource, operationTags));
   });
 
   return extend({},
@@ -109,7 +108,7 @@ prototype.convert = function(resourceListing, apiDeclarations) {
     {
       swagger: '2.0',
       info: this.buildInfo(resourceListing),
-      tags: undefinedIfEmpty(removeNonValues(tags)),
+      tags: undefinedIfEmpty(tags),
       paths: undefinedIfEmpty(paths),
       securityDefinitions: undefinedIfEmpty(securityDefinitions),
       definitions: undefinedIfEmpty(definitions)
@@ -118,46 +117,75 @@ prototype.convert = function(resourceListing, apiDeclarations) {
 };
 
 /*
+ * Get list of resources.
+ * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param apiDeclarations {object} - a map with paths as keys and resources as values
+ * @returns {array} - list of resources
+*/
+Converter.prototype.getResources = function(resourceListing, apiDeclarations) {
+  var resources = [];
+  var embedded = false;
+  this.forEach(resourceListing.apis, function(resource) {
+    var path = resource.path;
+
+    if (!isValue(path) || !isEmpty(resource.operations)) {
+      embedded = true;
+      return;
+    }
+
+    if (embedded) {
+      throw new SwaggerConverterError(
+        'Resource listing can not have both operations and API declarations.');
+    }
+
+    resource = apiDeclarations[path];
+    if (!isValue(resource)) {
+      throw new SwaggerConverterError(
+        'resourceListing addressing missing declaration on path: ' + path);
+    }
+    resources.push(resource);
+  });
+
+  if (embedded) {
+    return [resourceListing];
+  }
+  return resources;
+};
+
+/*
  * Builds "tags" section of Swagger 2.0 document
  * @param resourceListing {object} - root of Swagger 1.2 document
- * @param apiDeclarations {array} - a list of resources
+ * @param resources {object} - list of resources
  * @returns {array} - list of Swagger 2.0 tags
 */
-Converter.prototype.buildTags = function(resourceListing, apiDeclarations) {
-  assert(!isEmpty(apiDeclarations));
-
-  var paths = [];
-  this.forEach(apiDeclarations, function(declaration) {
-    var path = declaration.resourcePath;
-    if (isValue(path) && paths.indexOf(path) === -1) {
-      paths.push(path);
+Converter.prototype.buildTags = function(resourceListing, resources) {
+  var resourcePaths = [];
+  this.forEach(resources, function(resource) {
+    var path = resource.resourcePath;
+    if (isValue(resource) && resourcePaths.indexOf(path) === -1) {
+      resourcePaths.push(path);
     }
   });
 
   //'resourcePath' is optional parameter and also frequently have invalid values
-  //if so than we don't create any tags at all.
-  //TODO: generate replacement based on longest common prefix for paths in resource.
-  if (paths.length < apiDeclarations.length) {
-    return [];
+  // if so than we discard all values and use resource paths for listing instead.
+  if (getLength(resourcePaths) < getLength(resources)) {
+    resourcePaths = {};
   }
 
-  //TODO: better way to mach tag names and descriptions
-  var tagDescriptions = {};
-  this.forEach(resourceListing.apis, function(resource) {
-    var tagName = this.extractTag(resource.path);
+  var tags = [];
+  this.forEach(resourceListing.apis, function(resource, index) {
+    if (!isEmpty(resource.operations)) {
+      return;
+    }
+
+    var path = resourcePaths[index] || resource.path;
+    var tagName = this.extractTag(path);
     if (!isValue(tagName)) { return; }
 
-    tagDescriptions[tagName] = resource.description;
-  });
-
-  var tags = [];
-  this.forEach(paths, function(path) {
-    var name = this.extractTag(path);
-    var description = tagDescriptions[name];
-
     tags.push(extend({}, {
-      name: name,
-      description: description
+      name: tagName,
+      description: resource.description
     }));
   });
 
@@ -177,32 +205,6 @@ prototype.extractTag = function(resourcePath) {
     .split(['/']).pop();
 
   return tag || undefined;
-};
-
-/*
- * Test if object is embedded document
- * @param resourceListing {object} - root of Swagger 1.2 document
- * @returns {boolean} - result of test
-*/
-prototype.isEmbeddedDocument = function(resourceListing) {
-  var seenOperations = false;
-  var seenApiDeclaration = false;
-
-  this.forEach(resourceListing.apis, function(resource) {
-    if (!isEmpty(resource.operations)) {
-      seenOperations = true;
-    }
-    else if (isValue(resource.path)) {
-      seenApiDeclaration = true;
-    }
-
-    if (seenOperations && seenApiDeclaration) {
-      throw new SwaggerConverterError(
-        'Resource listing can not have both operations and API declarations.');
-    }
-  });
-
-  return seenOperations;
 };
 
 /*
@@ -804,27 +806,6 @@ function extend(destination) {
 */
 function undefinedIfEmpty(value) {
   return isEmpty(value) ? undefined : value;
-}
-
-/*
- * Filter out all non value elements(null, undefined) from array
- * @param collection {array} - the collection to filter
- * @returns {array} - result
-*/
-function removeNonValues(collection) {
-  if (!isValue(collection)) {
-    return collection;
-  }
-
-  assert(Array.isArray(collection));
-
-  var result = [];
-  collection.forEach(function(value) {
-    if (isValue(value)) {
-      result.push(value);
-    }
-  });
-  return result;
 }
 
 /*
