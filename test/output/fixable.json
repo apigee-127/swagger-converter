@@ -5,9 +5,22 @@
         "title": "Title was not specified",
         "version": "1.0.0"
     },
+    "tags": [
+        {
+            "name": "pets",
+            "description": "A list of pets"
+        },
+        {
+            "name": "stores",
+            "description": "A list of stores"
+        }
+    ],
     "paths": {
         "/pets": {
             "get": {
+                "tags": [
+                    "pets"
+                ],
                 "parameters": [
                     {
                         "in": "body",
@@ -64,6 +77,9 @@
         },
         "/stores": {
             "get": {
+                "tags": [
+                    "stores"
+                ],
                 "responses": {
                     "200": {
                         "description": "Return all stores"
