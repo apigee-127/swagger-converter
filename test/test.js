@@ -13,38 +13,38 @@ require('mocha-jscs')();
 var inputs = [
   {
     resourceListing: 'minimal/index.json',
-    apiDeclarations: [
-      'minimal/pets.json',
-      'minimal/stores.json'
-    ],
+    apiDeclarations: {
+      '/pets': 'minimal/pets.json',
+      '/stores': 'minimal/stores.json'
+    },
     output: 'minimal.json'
   },
   {
     resourceListing: 'embedded/index.json',
-    apiDeclarations: [],
+    apiDeclarations: {},
     output: 'embedded.json'
   },
   {
     resourceListing: 'petstore/index.json',
-    apiDeclarations: [
-      'petstore/pet.json',
-      'petstore/user.json',
-      'petstore/store.json'
-    ],
+    apiDeclarations: {
+      '/pet': 'petstore/pet.json',
+      '/user': 'petstore/user.json',
+      '/store': 'petstore/store.json'
+    },
     // TODO: petstore example output is not perfect output. Update the output
     output: 'petstore.json'
   },
   {
     resourceListing: 'complex-parameters/index.json',
-    apiDeclarations: [],
+    apiDeclarations: {},
     output: 'complex-parameters.json'
   },
   {
     resourceListing: 'fixable/index.json',
-    apiDeclarations: [
-      'fixable/pets.json',
-      'fixable/stores.json'
-    ],
+    apiDeclarations: {
+      '/pets': 'fixable/pets.json',
+      '/stores': 'fixable/stores.json'
+    },
     output: 'fixable.json'
   }
 ];
@@ -59,11 +59,14 @@ function testInput(input) {
   var resourceListingPath = path.join(inputPath, input.resourceListing);
   var resourceListingFile = fs.readFileSync(resourceListingPath).toString();
   var resourceListing = JSON.parse(resourceListingFile);
-  var apiDeclarations = input.apiDeclarations.map(function(apiDeclaration) {
+  var apiDeclarations = {};
+
+  for (var key in input.apiDeclarations) {
+    var apiDeclaration = input.apiDeclarations[key];
     var apiDeclarationPath = path.join(inputPath, apiDeclaration);
     var apiDeclarationFile = fs.readFileSync(apiDeclarationPath).toString();
-    return JSON.parse(apiDeclarationFile);
-  });
+    apiDeclarations[key] = JSON.parse(apiDeclarationFile);
+  }
 
   // Make resourceListing and apiDeclarations Immutable to make sure API is
   // working without touching the input objects
