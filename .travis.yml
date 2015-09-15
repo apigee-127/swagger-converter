@@ -5,6 +5,7 @@ script:
 after_success:
   - npm run coveralls
 node_js:
+  - 'stable'
   - '0.10'
   - '0.12'
   - 'iojs'
