@@ -490,9 +490,10 @@ prototype.buildResponses = function(oldOperation) {
 
   this.forEach(oldOperation.responseMessages, function(oldResponse) {
     var code = '' + oldResponse.code;
-    //TODO: process Swagger 1.2 'responseModel'
     responses[code] = extend({}, {
       description: oldResponse.message || 'Description was not specified',
+      schema: undefinedIfEmpty(
+        this.buildTypeProperties(oldResponse.responseModel, true))
     });
   });
 
