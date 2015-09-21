@@ -307,25 +307,26 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
   }
 
   var typeMap = {
-    integer:  {type: 'integer'},
-    number:   {type: 'number'},
-    string:   {type: 'string'},
-    boolean:  {type: 'boolean'},
-    array:    {type: 'array'},
-    object:   {type: 'object'},
-    file:     {type: 'file'},
-    int:      {type: 'integer', format: 'int32'},
-    long:     {type: 'integer', format: 'int64'},
-    float:    {type: 'number',  format: 'float'},
-    double:   {type: 'number',  format: 'double'},
-    byte:     {type: 'string',  format: 'byte'},
-    date:     {type: 'string',  format: 'date'},
-    datetime: {type: 'string',  format: 'date-time'},
-    list:     {type: 'array'},
-    set:      {type: 'array', uniqueItems: true},
-    map:      {type: 'object'},
-    void:     {},
-    any:      {}
+    integer:     {type: 'integer'},
+    number:      {type: 'number'},
+    string:      {type: 'string'},
+    boolean:     {type: 'boolean'},
+    array:       {type: 'array'},
+    object:      {type: 'object'},
+    file:        {type: 'file'},
+    int:         {type: 'integer', format: 'int32'},
+    long:        {type: 'integer', format: 'int64'},
+    float:       {type: 'number',  format: 'float'},
+    double:      {type: 'number',  format: 'double'},
+    byte:        {type: 'string',  format: 'byte'},
+    date:        {type: 'string',  format: 'date'},
+    datetime:    {type: 'string',  format: 'date-time'},
+    'date-time': {type: 'string',  format: 'date-time'},
+    list:        {type: 'array'},
+    set:         {type: 'array', uniqueItems: true},
+    map:         {type: 'object'},
+    void:        {},
+    any:         {}
   };
 
   var type = typeMap[oldType.toLowerCase()];
