@@ -441,7 +441,11 @@ prototype.buildPaths = function(apiDeclaration, tags) {
 
     var pathString = URI(api.path).absoluteTo('/').path(true);
     pathString = pathString.replace('{format}', 'json');
-    var path = paths[pathString] = {};
+
+    if (!isValue(paths[pathString])) {
+      paths[pathString] = {};
+    }
+    var path = paths[pathString];
 
     this.forEach(api.operations, function(oldOperation) {
       var method = oldOperation.method || oldOperation.httpMethod;
