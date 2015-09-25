@@ -4,7 +4,8 @@
   "description": "Swagger Converter",
   "main": "index.js",
   "scripts": {
-    "test": "istanbul cover --report lcovonly _mocha",
+    "test": "mocha",
+    "istanbul": "istanbul cover --report lcovonly _mocha",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
     "pretest": "npm run build",
     "browserify": "browserify index.js > browser.js",
