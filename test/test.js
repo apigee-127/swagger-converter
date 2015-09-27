@@ -2,7 +2,7 @@ var fs = require('fs');
 var path = require('path');
 var convert = require('..');
 var expect = require('chai').expect;
-var SwaggerTools = require('swagger-tools');
+var sway = require('sway');
 var Immutable = require('seamless-immutable');
 var inputPath = './test/input/';
 var outputPath = './test/output/';
@@ -94,12 +94,13 @@ function testInput(input) {
       });
 
       it('should generate valid Swagger 2.0 document', function() {
-        function validateCallback(validationErrors, validationResults) {
-          var errors = [].concat(validationErrors || [])
-            .concat((validationResults && validationResults.errors) || []);
-          expect(errors).to.deep.equal([]);
-        }
-        SwaggerTools.specs.v2.validate(converted, validateCallback);
+        return sway.create({definition: converted})
+          .then(function(swaggerObj) {
+            swaggerObj.validate();
+            expect(swaggerObj.getLastErrors()).to.deep.equal([]);
+            //TODO: fix all warings and uncomment
+            //expect(swaggerObj.getLastWarnings()).to.deep.equal([]);
+          });
       });
 
       it('should produce the same output as output file', function() {
