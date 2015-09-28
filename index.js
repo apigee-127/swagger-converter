@@ -437,7 +437,9 @@ prototype.buildPaths = function(apiDeclaration, tags) {
   var operationDefaults = {
     produces: apiDeclaration.produces,
     consumes: apiDeclaration.consumes,
-    tags: tags
+    tags: tags,
+    security: undefinedIfEmpty(
+      this.buildSecurity(apiDeclaration.authorizations))
   };
 
   this.forEach(apiDeclaration.apis, function(api) {
@@ -462,6 +464,31 @@ prototype.buildPaths = function(apiDeclaration, tags) {
 };
 
 /*
+ * Builds a Swagger 2.0 security object form a Swagger 1.2 authorizations object
+ * @param oldAuthorizations {object} - Swagger 1.2 authorizations object
+ * @returns {object} - Swagger 2.0 security object
+*/
+prototype.buildSecurity = function(oldAuthorizations) {
+  var security = [];
+  this.mapEach(oldAuthorizations, function(oldScopes, oldName) {
+    var names = this.securityNamesMap[oldName];
+    if (isEmpty(names)) {
+      //TODO: add warning
+      names = [oldName];
+    }
+
+    this.forEach(names, function(name) {
+      var requirement = {};
+      requirement[name] = this.mapEach(oldScopes, function(oldScope) {
+        return oldScope.scope;
+      });
+      security.push(requirement);
+    });
+  });
+  return security;
+};
+
+/*
  * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
  * @param oldOperation {object} - Swagger 1.2 operation object
  * @param operationDefaults {object} - defaults from containing apiDeclaration
@@ -474,7 +501,6 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
     parameters.push(this.buildParameter(oldParameter));
   });
 
-  //TODO: process Swagger 1.2 'authorizations'
   return extend({}, operationDefaults, {
     operationId: oldOperation.nickname,
     summary: oldOperation.summary,
@@ -483,7 +509,8 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
     produces: oldOperation.produces,
     consumes: oldOperation.consumes,
     parameters: undefinedIfEmpty(parameters),
-    responses: this.buildResponses(oldOperation)
+    responses: this.buildResponses(oldOperation),
+    security: undefinedIfEmpty(this.buildSecurity(oldOperation.authorizations))
   });
 };
 
@@ -704,6 +731,20 @@ prototype.buildDefinitions = function(oldModels) {
   });
 
   return models;
+};
+
+/*
+ * Map elements of collection into array by invoking iteratee for each element
+ * @param collection {array|object} - the collection to iterate over
+ * @parma iteratee {function} - the function invoked per iteration
+ * @returns {array|undefined} - result
+*/
+prototype.mapEach = function(collection, iteratee) {
+  var result = [];
+  this.forEach(collection, function(value, key) {
+    result.push(iteratee.bind(this)(value, key));
+  });
+  return result;
 };
 
 /*
