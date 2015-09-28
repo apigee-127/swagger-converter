@@ -203,6 +203,18 @@
                         "required": false,
                         "type": "string"
                     }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "write:pets"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "write:pets"
+                        ]
+                    }
                 ]
             },
             "get": {
@@ -274,6 +286,18 @@
                         "required": true,
                         "type": "string"
                     }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "write:pets"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "write:pets"
+                        ]
+                    }
                 ]
             },
             "patch": {
@@ -321,6 +345,18 @@
                             "$ref": "#/definitions/Pet"
                         }
                     }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "write:pets"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "write:pets"
+                        ]
+                    }
                 ]
             }
         },
@@ -360,6 +396,20 @@
                         "required": false,
                         "type": "file"
                     }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "write:pets",
+                            "read:pets"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "write:pets",
+                            "read:pets"
+                        ]
+                    }
                 ]
             }
         },
@@ -391,6 +441,18 @@
                           }
                         }
                     }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "test:anything"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "test:anything"
+                        ]
+                    }
                 ]
             }
         },
@@ -421,6 +483,18 @@
                               "$ref": "#/definitions/User"
                           }
                         }
+                    }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "test:anything"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "test:anything"
+                        ]
                     }
                 ]
             }
@@ -464,6 +538,18 @@
                             "$ref": "#/definitions/User"
                         }
                     }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "test:anything"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "test:anything"
+                        ]
+                    }
                 ]
             },
             "delete": {
@@ -494,6 +580,18 @@
                         "name": "username",
                         "required": true,
                         "type": "string"
+                    }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "test:anything"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "test:anything"
+                        ]
                     }
                 ]
             },
@@ -613,6 +711,18 @@
                             "$ref": "#/definitions/User"
                         }
                     }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "test:anything"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "test:anything"
+                        ]
+                    }
                 ]
             }
         },
@@ -643,6 +753,18 @@
                         "schema": {
                             "$ref": "#/definitions/Order"
                         }
+                    }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "write:pets"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "write:pets"
+                        ]
                     }
                 ]
             }
@@ -676,6 +798,18 @@
                         "name": "orderId",
                         "required": true,
                         "type": "string"
+                    }
+                ],
+                "security": [
+                    {
+                        "oauth2_implicit": [
+                            "write:pets"
+                        ]
+                    },
+                    {
+                        "oauth2_accessCode": [
+                            "write:pets"
+                        ]
                     }
                 ]
             },
@@ -725,7 +859,8 @@
             "authorizationUrl": "http://petstore.swagger.wordnik.com/api/oauth/dialog",
             "scopes": {
                 "write:pets": "Modify pets in your account",
-                "read:pets": "Read your pets"
+                "read:pets": "Read your pets",
+                "test:anything": "anything"
             }
         },
         "oauth2_accessCode": {
@@ -735,7 +870,8 @@
             "tokenUrl": "http://petstore.swagger.wordnik.com/api/oauth/token",
             "scopes": {
                 "write:pets": "Modify pets in your account",
-                "read:pets": "Read your pets"
+                "read:pets": "Read your pets",
+                "test:anything": "anything"
             }
         }
     },

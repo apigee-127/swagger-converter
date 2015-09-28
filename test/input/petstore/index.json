@@ -29,6 +29,10 @@
         {
           "scope": "read:pets",
           "description": "Read your pets"
+        },
+        {
+          "scope": "test:anything",
+          "description": "anything"
         }
       ],
       "grantTypes": {
