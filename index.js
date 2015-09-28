@@ -307,6 +307,7 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
   }
 
   var typeMap = {
+    //Swagger 1.2 types
     integer:     {type: 'integer'},
     number:      {type: 'number'},
     string:      {type: 'string'},
@@ -314,19 +315,22 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     array:       {type: 'array'},
     object:      {type: 'object'},
     file:        {type: 'file'},
+    void:        {},
+    //Swagger 1.1 types
     int:         {type: 'integer', format: 'int32'},
     long:        {type: 'integer', format: 'int64'},
     float:       {type: 'number',  format: 'float'},
     double:      {type: 'number',  format: 'double'},
     byte:        {type: 'string',  format: 'byte'},
     date:        {type: 'string',  format: 'date'},
-    datetime:    {type: 'string',  format: 'date-time'},
-    'date-time': {type: 'string',  format: 'date-time'},
     list:        {type: 'array'},
     set:         {type: 'array', uniqueItems: true},
-    map:         {type: 'object'},
-    void:        {},
-    any:         {}
+    //JSON Schema Draft-3
+    any:         {},
+    //Unofficial but very common mistakes
+    datetime:    {type: 'string',  format: 'date-time'},
+    'date-time': {type: 'string',  format: 'date-time'},
+    map:         {type: 'object'}
   };
 
   var type = typeMap[oldType.toLowerCase()];
