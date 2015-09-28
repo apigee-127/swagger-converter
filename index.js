@@ -252,7 +252,7 @@ function buildPath(api, apiDeclaration) {
 function buildOperation(oldOperation, produces, consumes, resourcePath) {
   var operation = {
     responses: {},
-    description: oldOperation.description || ''
+    description: oldOperation.description || oldOperation.notes || ''
   };
 
   if (resourcePath) {
