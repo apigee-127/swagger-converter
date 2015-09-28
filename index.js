@@ -284,13 +284,6 @@ function buildOperation(oldOperation, produces, consumes, resourcePath) {
     });
   }
 
-  if (!Object.keys(operation.responses).length ||
-    (!operation.responses[200] && oldOperation.type)) {
-    operation.responses[200] = {
-      description: 'No response was specified'
-    };
-  }
-
   if (oldOperation.type && oldOperation.type !== 'void') {
     var schema = buildParamType(oldOperation);
     if (primitiveTypes.indexOf(oldOperation.type) === -1) {
