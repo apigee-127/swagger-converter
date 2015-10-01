@@ -42,6 +42,6 @@
     "uglify-js": "^2.4.16"
   },
   "dependencies": {
-    "URIjs": "^1.16.0"
+    "urijs": "^1.16.1"
   }
 }
