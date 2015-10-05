@@ -24,7 +24,7 @@
 'use strict';
 
 var assert = require('assert');
-var URI = require('URIjs');
+var URI = require('urijs');
 
 if (typeof window === 'undefined') {
   module.exports = convert;
