@@ -25,6 +25,7 @@
                     {
                         "in": "body",
                         "description": "Body parameter with missing name",
+                        "x-whatever": "foo",
                         "schema": {
                             "$ref": "#/definitions/BrokenModel"
                         },
