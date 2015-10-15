@@ -13,6 +13,7 @@
             {
               "description": "Body parameter with missing name",
               "paramType": "body",
+              "x-whatever": "foo",
               "type": "BrokenModel"
             },
             {

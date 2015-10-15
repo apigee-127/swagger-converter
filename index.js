@@ -556,6 +556,12 @@ prototype.buildParameter = function(oldParameter) {
     required: fixNonStringValue(oldParameter.required)
   });
 
+  Object.keys(oldParameter).forEach(function(property) {
+    if (property.match(/^X-/i) !== null) {
+      parameter[property] = oldParameter[property];
+    }
+  });
+
   if (parameter.in === 'form') {
     parameter.in = 'formData';
   }
