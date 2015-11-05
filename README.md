@@ -27,7 +27,7 @@ Swagger Converter expects two arguments.
 * `apiDeclarations` is an array of objects that are listed in `resourceListing`
 
 ```javascript
-var convert = require('swagger-converter');
+var swaggerConverter = require('swagger-converter');
 
 var resourceListing = require('/path/to/petstore/index.json');
 
@@ -37,7 +37,7 @@ var apiDeclarations = [
   require('/path/to/petstore/store.json')
 ];
 
-var swagger2Document = convert(resourceListing, apiDeclarations);
+var swagger2Document = swaggerConverter(resourceListing, apiDeclarations);
 
 console.log(JSON.stringify(swagger2Document, null, 2));
 ```
@@ -53,7 +53,7 @@ Include the `browser.js` script in your HTML
 ```
 Use the script
 ```javascript
-var convert = SwaggerConverter.convert;
+var swagger2Document = SwaggerConverter(resourceListing, apiDeclarations);;
 ```
 
 ### Development
