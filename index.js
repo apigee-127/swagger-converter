@@ -26,13 +26,7 @@
 var assert = require('assert');
 var URI = require('urijs');
 
-if (typeof window === 'undefined') {
-  module.exports = convert;
-} else {
-  window.SwaggerConverter = window.SwaggerConverter || {
-    convert: convert
-  };
-}
+module.exports = convert;
 
 /**
  * Swagger Converter Error
