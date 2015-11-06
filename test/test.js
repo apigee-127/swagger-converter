@@ -27,7 +27,7 @@
 
 var fs = require('fs');
 var path = require('path');
-var convert = require('..');
+var convert = require('..').convert;
 var expect = require('chai').expect;
 var sway = require('sway');
 var Immutable = require('seamless-immutable');
