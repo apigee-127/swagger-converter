@@ -53,7 +53,7 @@ Include the `browser.js` script in your HTML
 ```
 Use the script
 ```javascript
-var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations);;
+var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations);
 ```
 
 ### Development
