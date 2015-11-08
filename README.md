@@ -8,7 +8,7 @@
 
 [![Join the chat at https://gitter.im/apigee-127/swagger-converter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/apigee-127/swagger-converter?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-> Converts [Swagger](http://swagger.io/) documents from version **`1.2`** to version **`2.0`**
+> Converts [Swagger](http://swagger.io/) documents from version **`1.x`** to version **`2.0`**
 
 ### Installation
 Use npm
@@ -23,21 +23,21 @@ It's recommended to use command line tools like [**`swagger-tools`**][swagger-to
 
 Swagger Converter expects two arguments.
 
-* `resourceListing` is Swagger 1.2 entry point file.
-* `apiDeclarations` is an array of objects that are listed in `resourceListing`
+* `resourceListing` is Swagger 1.x entry point file.
+* `apiDeclarations` is a map with paths from `resourceListing` as keys and resources as values
 
 ```javascript
 var swaggerConverter = require('swagger-converter');
 
 var resourceListing = require('/path/to/petstore/index.json');
 
-var apiDeclarations = [
-  require('/path/to/petstore/pet.json'),
-  require('/path/to/petstore/user.json'),
-  require('/path/to/petstore/store.json')
-];
+var apiDeclarations = {
+  '/pet': require('/path/to/petstore/pet.json'),
+  '/user': require('/path/to/petstore/user.json'),
+  '/store': require('/path/to/petstore/store.json')
+};
 
-var swagger2Document = swaggerConverter(resourceListing, apiDeclarations);
+var swagger2Document = swaggerConverter.convert(resourceListing, apiDeclarations);
 
 console.log(JSON.stringify(swagger2Document, null, 2));
 ```
@@ -53,7 +53,7 @@ Include the `browser.js` script in your HTML
 ```
 Use the script
 ```javascript
-var swagger2Document = SwaggerConverter(resourceListing, apiDeclarations);;
+var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations);
 ```
 
 ### Development
