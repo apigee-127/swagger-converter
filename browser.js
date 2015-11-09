@@ -28,7 +28,7 @@
 var assert = require('assert');
 var URI = require('urijs');
 
-module.exports = convert;
+var SwaggerConverter = module.exports = {};
 
 /**
  * Swagger Converter Error
@@ -48,7 +48,7 @@ SwaggerConverterError.prototype.name = 'SwaggerConverterError';
  * @param apiDeclarations {object} - a map with paths as keys and resources as values
  * @returns {object} - Fully converted Swagger 2.0 document
 */
-function convert(resourceListing, apiDeclarations) {
+SwaggerConverter.convert = function(resourceListing, apiDeclarations) {
   if (Array.isArray(apiDeclarations)) {
     throw new SwaggerConverterError(
       'Second argument(apiDeclarations) should be plain object, ' +
@@ -57,7 +57,7 @@ function convert(resourceListing, apiDeclarations) {
 
   var converter = new Converter();
   return converter.convert(resourceListing, apiDeclarations);
-}
+};
 
 var Converter = function() {};
 var prototype = Converter.prototype;
