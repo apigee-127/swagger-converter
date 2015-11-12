@@ -423,7 +423,8 @@
                 "summary": "Creates list of users with given input array",
                 "operationId": "createUsersWithArrayInput",
                 "tags": [
-                    "user"
+                    "user",
+                    "otherTag"
                 ],
                 "produces": [
                     "application/json"
