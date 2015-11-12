@@ -9,6 +9,7 @@
         {
           "method": "GET",
           "summary": "",
+          "tags": ["pets"],
           "parameters": [
             {
               "description": "Body parameter with missing name",

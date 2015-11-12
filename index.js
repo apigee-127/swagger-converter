@@ -498,10 +498,18 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
     parameters.push(this.buildParameter(oldParameter));
   });
 
+  var tags = (operationDefaults.tags || []).concat(oldOperation.tags || []);
+
+  tags = tags.filter(function(e, i, arr) {
+    var element = arr.lastIndexOf(e) === i;
+    return element;
+  });
+
   return extend({}, operationDefaults, {
     operationId: oldOperation.nickname,
     summary: oldOperation.summary,
     description: oldOperation.description || oldOperation.notes,
+    tags: undefinedIfEmpty(tags),
     deprecated: fixNonStringValue(oldOperation.deprecated),
     produces: oldOperation.produces,
     consumes: oldOperation.consumes,

@@ -12,6 +12,7 @@
     "paths": {
         "/pets": {
             "get": {
+                "tags": ["pets"],
                 "responses": {
                     "200": {
                         "description": "Return all pets"
