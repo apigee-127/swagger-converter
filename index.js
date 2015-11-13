@@ -498,12 +498,11 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
     parameters.push(this.buildParameter(oldParameter));
   });
 
+  /*
+   * Merges the tags from the resourceListing and the ones specified in the apiDeclaration.
+   */
   var tags = (operationDefaults.tags || []).concat(oldOperation.tags || []);
-
-  tags = tags.filter(function(e, i, arr) {
-    var element = arr.lastIndexOf(e) === i;
-    return element;
-  });
+  tags = removeDuplicates(tags);
 
   return extend({}, operationDefaults, {
     operationId: oldOperation.nickname,
@@ -909,4 +908,16 @@ function fixNonStringValue(value, skipError) {
 
     throw new SwaggerConverterError('incorect property value: ' + e.message);
   }
+}
+
+/*
+ * Remove duplicates of an array
+ * @params collection {array}
+ * @returns {array} - collection without duplicates
+ */
+
+function removeDuplicates(collection) {
+  return collection.filter(function(e, i, arr) {
+    return arr.lastIndexOf(e) === i;
+  });
 }
