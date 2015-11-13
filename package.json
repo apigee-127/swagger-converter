@@ -39,7 +39,7 @@
     "mocha-jshint": "^2.2.5",
     "seamless-immutable": "^4.0.2",
     "sway": "^0.5.1",
-    "uglify-js": "^2.5.0"
+    "uglify-js": "^2.6.0"
   },
   "dependencies": {
     "urijs": "^1.16.1"
