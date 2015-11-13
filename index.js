@@ -915,7 +915,6 @@ function fixNonStringValue(value, skipError) {
  * @params collection {array}
  * @returns {array} - collection without duplicates
  */
-
 function removeDuplicates(collection) {
   return collection.filter(function(e, i, arr) {
     return arr.lastIndexOf(e) === i;
