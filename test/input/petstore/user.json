@@ -14,6 +14,7 @@
           "method": "POST",
           "summary": "Creates list of users with given input array",
           "notes": "",
+          "tags": ["otherTag"],
           "type": "void",
           "nickname": "createUsersWithArrayInput",
           "authorizations": {
