@@ -9,6 +9,7 @@
         {
           "method": "GET",
           "summary": "",
+          "tags": ["pets"],
           "responseMessages": [
             {
               "code": 200,

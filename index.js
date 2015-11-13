@@ -498,10 +498,17 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
     parameters.push(this.buildParameter(oldParameter));
   });
 
+  /*
+   * Merges the tags from the resourceListing and the ones specified in the apiDeclaration.
+   */
+  var tags = (operationDefaults.tags || []).concat(oldOperation.tags || []);
+  tags = removeDuplicates(tags);
+
   return extend({}, operationDefaults, {
     operationId: oldOperation.nickname,
     summary: oldOperation.summary,
     description: oldOperation.description || oldOperation.notes,
+    tags: undefinedIfEmpty(tags),
     deprecated: fixNonStringValue(oldOperation.deprecated),
     produces: oldOperation.produces,
     consumes: oldOperation.consumes,
@@ -901,4 +908,16 @@ function fixNonStringValue(value, skipError) {
 
     throw new SwaggerConverterError('incorect property value: ' + e.message);
   }
+}
+
+/*
+ * Remove duplicates of an array
+ * @params collection {array}
+ * @returns {array} - collection without duplicates
+ */
+
+function removeDuplicates(collection) {
+  return collection.filter(function(e, i, arr) {
+    return arr.lastIndexOf(e) === i;
+  });
 }
