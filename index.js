@@ -35,7 +35,7 @@ var SwaggerConverter = module.exports = {};
  */
 function SwaggerConverterError(message) {
   this.message = message;
-  this.stack = Error().stack;
+  this.stack = (new Error(message)).stack;
 }
 SwaggerConverterError.prototype = Object.create(Error.prototype);
 SwaggerConverterError.prototype.name = 'SwaggerConverterError';
