@@ -73,6 +73,13 @@ var inputs = [
       '/stores': 'fixable/stores.json'
     },
     output: 'fixable.json'
+  },
+  {
+    resourceListing: 'complex-models/index.json',
+    apiDeclarations: {
+      '/projects': 'complex-models/projects.json'
+    },
+    output: 'complex-models.json'
   }
 ];
 
@@ -80,7 +87,6 @@ var inputs = [
 inputs.forEach(testInput);
 
 function testInput(input) {
-
   var outputFile = fs.readFileSync(path.join(outputPath, input.output));
   var outputObject = JSON.parse(outputFile.toString());
   var resourceListingPath = path.join(inputPath, input.resourceListing);
