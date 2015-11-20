@@ -694,7 +694,10 @@ prototype.buildModel = function(oldModel) {
 
     properties[propertyName] = extend({},
       this.buildDataType(oldProperty, true),
-      {description: oldProperty.description}
+      {
+        description: oldProperty.description,
+        example: oldProperty.example
+      }
     );
   });
 
@@ -705,7 +708,8 @@ prototype.buildModel = function(oldModel) {
     description: oldModel.description,
     required: undefinedIfEmpty(required),
     properties: undefinedIfEmpty(properties),
-    discriminator: oldModel.discriminator
+    discriminator: oldModel.discriminator,
+    example: oldModel.example
   });
 };
 

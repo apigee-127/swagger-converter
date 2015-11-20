@@ -1,0 +1,63 @@
+{
+  "apiVersion": "v1",
+  "swaggerVersion": "1.2",
+  "resourcePath": "projects",
+  "apis": [
+    {
+      "path": "/projects/{id}.json",
+      "operations": [
+        {
+          "responseMessages": [
+            {
+              "code": 200,
+              "responseModel": "Project",
+              "message": "Success"
+            }
+          ],
+          "parameters": [
+            {
+              "paramType": "path",
+              "name": "id",
+              "type": "integer",
+              "description": "Project Id",
+              "required": false
+            }
+          ],
+          "method": "get"
+        }
+      ]
+    }
+  ],
+  "models": {
+    "Project": {
+      "id": "Project",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Project ID",
+          "example": 1337
+        }
+      },
+      "description": "A Project object."
+    },
+    "LongProject": {
+      "id": "LongProject",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Project ID"
+        }
+      },
+      "description": "A Project object.",
+      "example": {
+        "id": 1337
+      }
+    }
+  }
+}
