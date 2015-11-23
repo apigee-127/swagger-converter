@@ -27,7 +27,7 @@
 var assert = require('assert');
 var URI = require('urijs');
 
-var SwaggerConverter = module.exports = {};
+var SwaggerConverter = module.exports = { options : { collectionFormat : 'csv'}};
 
 /**
  * Swagger Converter Error
@@ -309,7 +309,7 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     number:      {type: 'number'},
     string:      {type: 'string'},
     boolean:     {type: 'boolean'},
-    array:       {type: 'array'},
+    array:       {type: 'array',  collectionFormat: SwaggerConverter.options.collectionFormat },
     object:      {type: 'object'},
     file:        {type: 'file'},
     void:        {},
@@ -320,8 +320,8 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     double:      {type: 'number',  format: 'double'},
     byte:        {type: 'string',  format: 'byte'},
     date:        {type: 'string',  format: 'date'},
-    list:        {type: 'array'},
-    set:         {type: 'array', uniqueItems: true},
+    list:        {type: 'array',  collectionFormat: SwaggerConverter.options.collectionFormat },
+    set:         {type: 'array', uniqueItems: true, collectionFormat: SwaggerConverter.options.collectionFormat },
     //JSON Schema Draft-3
     any:         {},
     //Unofficial but very common mistakes
