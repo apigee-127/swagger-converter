@@ -67,6 +67,14 @@ var inputs = [
     output: 'complex-parameters.json'
   },
   {
+    resourceListing: 'complex-parameters/index.json',
+    apiDeclarations: {},
+    options: {
+      collectionFormat: 'multi'
+    },
+    output: 'complex-parameters-multi.json'
+  },
+  {
     resourceListing: 'fixable/index.json',
     apiDeclarations: {
       '/pets': 'fixable/pets.json',
@@ -107,7 +115,7 @@ function testInput(input) {
   apiDeclarations = new Immutable(apiDeclarations);
 
   // Do the conversion
-  var converted = convert(resourceListing, apiDeclarations);
+  var converted = convert(resourceListing, apiDeclarations, input.options);
 
   // For debugging:
   // fs.writeFileSync(input.output + '-converted',

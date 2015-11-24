@@ -45,9 +45,10 @@ SwaggerConverterError.prototype.name = 'SwaggerConverterError';
  * @param resourceListing {object} - root Swagger 1.2 document where it has a
  *  list of all paths
  * @param apiDeclarations {object} - a map with paths as keys and resources as values
+ * @param options {object} - additonal options
  * @returns {object} - Fully converted Swagger 2.0 document
 */
-SwaggerConverter.convert = function(resourceListing, apiDeclarations) {
+SwaggerConverter.convert = function(resourceListing, apiDeclarations, options) {
   if (Array.isArray(apiDeclarations)) {
     throw new SwaggerConverterError(
       'Second argument(apiDeclarations) should be plain object, ' +
@@ -55,6 +56,7 @@ SwaggerConverter.convert = function(resourceListing, apiDeclarations) {
   }
 
   var converter = new Converter();
+  converter.options = options || {};
   return converter.convert(resourceListing, apiDeclarations);
 };
 
@@ -599,6 +601,15 @@ prototype.buildParameter = function(oldParameter) {
   //this property is required and its value MUST be true.
   if (parameter.in === 'path') {
     schema.required = true;
+  }
+
+  var collectionFormat = this.options.collectionFormat;
+  if (isValue(collectionFormat) && schema.type === 'array') {
+    //'multi' is valid only for parameters in "query" or "formData".
+    if (collectionFormat !== 'multi' ||
+      ['path', 'formData'].indexOf(parameter.in) === -1) {
+      schema.collectionFormat = this.options.collectionFormat;
+    }
   }
 
   return extend(parameter, schema);

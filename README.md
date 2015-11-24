@@ -21,10 +21,11 @@ npm install swagger-converter --save
 
 It's recommended to use command line tools like [**`swagger-tools`**][swagger-tools-npm] or [**`swagger-spec-converter`**][swagger-spec-converter] for converting your spec. This module will not handle validation and if your spec is not valid can produce invalid spec.
 
-Swagger Converter expects two arguments.
+Swagger Converter support following arguments:
 
-* `resourceListing` is Swagger 1.x entry point file.
-* `apiDeclarations` is a map with paths from `resourceListing` as keys and resources as values
+* `resourceListing`(required) is Swagger 1.x entry point file.
+* `apiDeclarations`(required) is a map with paths from `resourceListing` as keys and resources as values
+* `options`(optional) - See [options](#options) for the full list of options
 
 ```javascript
 var swaggerConverter = require('swagger-converter');
@@ -55,6 +56,10 @@ Use the script
 ```javascript
 var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations);
 ```
+
+### Options
+
+- `collectionFormat`[string] - assigned to every array parameter.
 
 ### Development
 
