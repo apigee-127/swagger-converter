@@ -47,7 +47,8 @@
                         "type": "array",
                         "items": {
                             "type": "string"
-                        }
+                        },
+                        "collectionFormat": "multi"
                     },
                     {
                         "in": "query",
@@ -57,7 +58,8 @@
                         "type": "array",
                         "items": {
                             "type": "string"
-                        }
+                        },
+                        "collectionFormat": "multi"
                     }
                 ],
                 "responses": {
