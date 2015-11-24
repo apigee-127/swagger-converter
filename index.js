@@ -27,7 +27,7 @@
 var assert = require('assert');
 var URI = require('urijs');
 
-var SwaggerConverter = module.exports = { options : { collectionFormat : 'csv'}};
+var SwaggerConverter = module.exports = {};
 
 /**
  * Swagger Converter Error
@@ -45,9 +45,10 @@ SwaggerConverterError.prototype.name = 'SwaggerConverterError';
  * @param resourceListing {object} - root Swagger 1.2 document where it has a
  *  list of all paths
  * @param apiDeclarations {object} - a map with paths as keys and resources as values
+ * @param options {object} - right now it supports setting collectionFormat as per Swagger 2.0 spec.
  * @returns {object} - Fully converted Swagger 2.0 document
 */
-SwaggerConverter.convert = function(resourceListing, apiDeclarations) {
+SwaggerConverter.convert = function(resourceListing, apiDeclarations, options) {
   if (Array.isArray(apiDeclarations)) {
     throw new SwaggerConverterError(
       'Second argument(apiDeclarations) should be plain object, ' +
@@ -55,6 +56,10 @@ SwaggerConverter.convert = function(resourceListing, apiDeclarations) {
   }
 
   var converter = new Converter();
+  converter.options = options || {};
+  if (!converter.options.collectionFormat) {
+    converter.options.collectionFormat = 'csv';
+  }
   return converter.convert(resourceListing, apiDeclarations);
 };
 
@@ -309,7 +314,10 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     number:      {type: 'number'},
     string:      {type: 'string'},
     boolean:     {type: 'boolean'},
-    array:       {type: 'array',  collectionFormat: SwaggerConverter.options.collectionFormat },
+    array:       {
+      type: 'array',
+      collectionFormat: this.options.collectionFormat
+    },
     object:      {type: 'object'},
     file:        {type: 'file'},
     void:        {},
@@ -320,8 +328,15 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     double:      {type: 'number',  format: 'double'},
     byte:        {type: 'string',  format: 'byte'},
     date:        {type: 'string',  format: 'date'},
-    list:        {type: 'array',  collectionFormat: SwaggerConverter.options.collectionFormat },
-    set:         {type: 'array', uniqueItems: true, collectionFormat: SwaggerConverter.options.collectionFormat },
+    list:        {
+      type: 'array',
+      collectionFormat: this.options.collectionFormat
+    },
+    set:         {
+      type: 'array',
+      uniqueItems: true,
+      collectionFormat: this.options.collectionFormat
+    },
     //JSON Schema Draft-3
     any:         {},
     //Unofficial but very common mistakes
@@ -332,6 +347,9 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
 
   var type = typeMap[oldType.toLowerCase()];
   if (isValue(type)) {
+    if ('array' === type.type && type.collectionFormat === 'csv') {
+      delete type.collectionFormat;
+    }
     return type;
   }
 
@@ -357,6 +375,9 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
     else {
       type = typeMap[collection];
       if (isValue(type)) {
+        if ('array' === type.type && type.collectionFormat === 'csv') {
+          delete type.collectionFormat;
+        }
         type.items = this.buildTypeProperties(items, allowRef);
         return type;
       }

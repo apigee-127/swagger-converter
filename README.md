@@ -53,7 +53,8 @@ Include the `browser.js` script in your HTML
 ```
 Use the script
 ```javascript
-var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations);
+var options = { collectionFormat: 'csv'}; //options is optional.
+var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations, options);
 ```
 
 ### Development
