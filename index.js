@@ -41,6 +41,48 @@ SwaggerConverterError.prototype = Object.create(Error.prototype);
 SwaggerConverterError.prototype.name = 'SwaggerConverterError';
 
 /*
+ * List all apiDeclarations refenced in resourceListing
+ * @param sourceUrl {string} - source URL for root Swagger 1.x document
+ * @param resourceListing {object} - root Swagger 1.x document
+ * @returns {object} - map of apiDeclarations paths to absolute URLs
+*/
+SwaggerConverter.listApiDeclarations = function(sourceUrl, resourceListing) {
+  /*
+   * Warning: This code is intended to cover us much as possible real-life
+   * cases and was tested using hundreds of public Swagger documents. If you
+   * change code please do not introduce any breaking changes.
+   * Possible workaround: you can alter algorithm by add/change 'basePath'
+   * before passing it into this function.
+  */
+  sourceUrl = URI(sourceUrl || '').query('');
+
+  var baseUrl = URI(resourceListing.basePath || '');
+  if (baseUrl.is('relative')) {
+    baseUrl = baseUrl.absoluteTo(sourceUrl);
+  }
+
+  if (resourceListing.swaggerVersion === '1.0' && baseUrl.suffix() === 'json') {
+    baseUrl.filename('');
+  }
+
+  var result = {};
+  resourceListing.apis.forEach(function(api) {
+    // skip embedded documents
+    if (!isValue(api.path) || isValue(api.operations)) {
+      return;
+    }
+
+    var resourceUrl = URI(api.path.replace('{format}', 'json'));
+    if (resourceUrl.is('relative')) {
+      resourceUrl = URI(baseUrl.href() + resourceUrl.href());
+    }
+    result[api.path] = resourceUrl.normalize().href();
+  });
+
+  return result;
+};
+
+/*
  * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
  * @param resourceListing {object} - root Swagger 1.2 document where it has a
  *  list of all paths
