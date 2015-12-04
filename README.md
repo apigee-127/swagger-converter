@@ -21,7 +21,8 @@ npm install swagger-converter --save
 
 It's recommended to use command line tools like [**`swagger-tools`**][swagger-tools-npm] or [**`swagger-spec-converter`**][swagger-spec-converter] for converting your spec. This module will not handle validation and if your spec is not valid can produce invalid spec.
 
-Swagger Converter support following arguments:
+##### convert function
+`converter` accept accept following arguments:
 
 * `resourceListing`(required) is Swagger 1.x entry point file.
 * `apiDeclarations`(required) is a map with paths from `resourceListing` as keys and resources as values
@@ -41,6 +42,29 @@ var apiDeclarations = {
 var swagger2Document = swaggerConverter.convert(resourceListing, apiDeclarations);
 
 console.log(JSON.stringify(swagger2Document, null, 2));
+```
+
+##### listApiDeclarations function
+`listApiDeclarations` function accept following arguments:
+
+* `sourceUrl`(required)       - source URL for root Swagger 1.x document
+* `resourceListing`(required) - root Swagger 1.x document
+
+```javascript
+var swaggerConverter = require('swagger-converter');
+
+var resourceListing = require('/path/to/petstore/index.json');
+
+var apiDeclarations = swaggerConverter.convert('http://test.com/api-docs', resourceListing);
+
+console.log(JSON.stringify(apiDeclarations, null, 2));
+/*
+{
+  "/pet": "http://test.com/api-docs/pet",
+  "/user": "http://test.com/api-docs/user",
+  "/store": "http://test.com/api-docs/store"
+}
+*/
 ```
 
 ##### In browser

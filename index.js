@@ -41,8 +41,50 @@ SwaggerConverterError.prototype = Object.create(Error.prototype);
 SwaggerConverterError.prototype.name = 'SwaggerConverterError';
 
 /*
- * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
- * @param resourceListing {object} - root Swagger 1.2 document where it has a
+ * List all apiDeclarations refenced in resourceListing
+ * @param sourceUrl {string} - source URL for root Swagger 1.x document
+ * @param resourceListing {object} - root Swagger 1.x document
+ * @returns {object} - map of apiDeclarations paths to absolute URLs
+*/
+SwaggerConverter.listApiDeclarations = function(sourceUrl, resourceListing) {
+  /*
+   * Warning: This code is intended to cover us much as possible real-life
+   * cases and was tested using hundreds of public Swagger documents. If you
+   * change code please do not introduce any breaking changes.
+   * Possible workaround: you can alter algorithm by add/change 'basePath'
+   * before passing it into this function.
+  */
+  sourceUrl = URI(sourceUrl || '').query('');
+
+  var baseUrl = URI(resourceListing.basePath || '');
+  if (baseUrl.is('relative')) {
+    baseUrl = baseUrl.absoluteTo(sourceUrl);
+  }
+
+  if (resourceListing.swaggerVersion === '1.0' && baseUrl.suffix() === 'json') {
+    baseUrl.filename('');
+  }
+
+  var result = {};
+  resourceListing.apis.forEach(function(api) {
+    // skip embedded documents
+    if (!isValue(api.path) || isValue(api.operations)) {
+      return;
+    }
+
+    var resourceUrl = URI(api.path.replace('{format}', 'json'));
+    if (resourceUrl.is('relative')) {
+      resourceUrl = URI(baseUrl.href() + resourceUrl.href());
+    }
+    result[api.path] = resourceUrl.normalize().href();
+  });
+
+  return result;
+};
+
+/*
+ * Converts Swagger 1.x specs file to Swagger 2.0 specs.
+ * @param resourceListing {object} - root Swagger 1.x document where it has a
  *  list of all paths
  * @param apiDeclarations {object} - a map with paths as keys and resources as values
  * @param options {object} - additonal options
@@ -64,8 +106,8 @@ var Converter = function() {};
 var prototype = Converter.prototype;
 
 /*
- * Converts Swagger 1.2 specs file to Swagger 2.0 specs.
- * @param resourceListing {object} - root of Swagger 1.2 document
+ * Converts Swagger 1.x specs file to Swagger 2.0 specs.
+ * @param resourceListing {object} - root of Swagger 1.x document
  * @param apiDeclarations {object} - a map with paths as keys and resources as values
  * @returns {object} - Fully converted Swagger 2.0 document
 */
@@ -115,7 +157,7 @@ prototype.convert = function(resourceListing, apiDeclarations) {
 
 /*
  * Get list of resources.
- * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param resourceListing {object} - root of Swagger 1.x document
  * @param apiDeclarations {object} - a map with paths as keys and resources as values
  * @returns {array} - list of resources
 */
@@ -151,7 +193,7 @@ Converter.prototype.getResources = function(resourceListing, apiDeclarations) {
 
 /*
  * Builds "tags" section of Swagger 2.0 document
- * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param resourceListing {object} - root of Swagger 1.x document
  * @param resources {object} - list of resources
  * @returns {array} - list of Swagger 2.0 tags
 */
@@ -191,7 +233,7 @@ Converter.prototype.buildTags = function(resourceListing, resources) {
 
 /*
  * Extract name of the tag from resourcePath
- * @param resourcePath {string} - Swagger 1.2 resource path
+ * @param resourcePath {string} - Swagger 1.x resource path
  * @returns {string} - tag name
 */
 prototype.extractTag = function(resourcePath) {
@@ -206,7 +248,7 @@ prototype.extractTag = function(resourcePath) {
 
 /*
  * Builds "info" section of Swagger 2.0 document
- * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param resourceListing {object} - root of Swagger 1.x document
  * @returns {object} - "info" section of Swagger 2.0 document
 */
 prototype.buildInfo = function(resourceListing) {
@@ -241,7 +283,7 @@ prototype.buildInfo = function(resourceListing) {
 
 /*
  * Merge path components from all resources.
- * @param resourceListing {object} - root of Swagger 1.2 document
+ * @param resourceListing {object} - root of Swagger 1.x document
  * @param apiDeclarations {array} - a list of resources
  * @returns {object} - Swagger 2.0 path components
  * @throws {SwaggerConverterError}
@@ -257,7 +299,7 @@ prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
       basePath = URI(basePath).absoluteTo(path.basePath).path(true);
     }
 
-    //TODO: Swagger 1.2 support per resource 'basePath', but Swagger 2.0 doesn't
+    //TODO: Swagger 1.x support per resource 'basePath', but Swagger 2.0 doesn't
     // solution could be to create separate spec per each 'basePath'.
     if (isValue(globalBasePath) && basePath !== globalBasePath) {
       throw new SwaggerConverterError(
@@ -271,8 +313,8 @@ prototype.aggregatePathComponents = function(resourceListing, apiDeclarations) {
 
 /*
  * Get host, basePath and schemes for Swagger 2.0 result document from
- * Swagger 1.2 basePath.
- * @param basePath {string} - the base path from Swagger 1.2
+ * Swagger 1.x basePath.
+ * @param basePath {string} - the base path from Swagger 1.x
  * @returns {object} - Swagger 2.0 path components
 */
 prototype.buildPathComponents = function(basePath) {
@@ -288,9 +330,9 @@ prototype.buildPathComponents = function(basePath) {
 };
 
 /*
- * Builds a Swagger 2.0 type properties from a Swagger 1.2 type properties
+ * Builds a Swagger 2.0 type properties from a Swagger 1.x type properties
  *
- * @param oldDataType {object} - Swagger 1.2 type object
+ * @param oldDataType {object} - Swagger 1.x type object
  *
  * @returns {object} - Swagger 2.0 equivalent
  * @throws {SwaggerConverterError}
@@ -306,7 +348,7 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
   }
 
   var typeMap = {
-    //Swagger 1.2 types
+    //Swagger 1.x types
     integer:     {type: 'integer'},
     number:      {type: 'number'},
     string:      {type: 'string'},
@@ -372,12 +414,12 @@ prototype.buildTypeProperties = function(oldType, allowRef) {
 };
 
 /*
- * Builds a Swagger 2.0 data type properties from a Swagger 1.2 data type properties
+ * Builds a Swagger 2.0 data type properties from a Swagger 1.x data type properties
  *
  * @see {@link https://github.com/swagger-api/swagger-spec/blob/master/versions/
- *  1.2.md#433-data-type-fields}
+ *  1.x.md#433-data-type-fields}
  *
- * @param oldDataType {object} - Swagger 1.2 data type object
+ * @param oldDataType {object} - Swagger 1.x data type object
  *
  * @returns {object} - Swagger 2.0 equivalent
  */
@@ -425,8 +467,8 @@ prototype.buildDataType = function(oldDataType, allowRef) {
 };
 
 /*
- * Builds a Swagger 2.0 paths object form a Swagger 1.2 path object
- * @param apiDeclaration {object} - Swagger 1.2 apiDeclaration
+ * Builds a Swagger 2.0 paths object form a Swagger 1.x path object
+ * @param apiDeclaration {object} - Swagger 1.x apiDeclaration
  * @param tag {array} - array of Swagger 2.0 tag names
  * @returns {object} - Swagger 2.0 path object
 */
@@ -463,8 +505,8 @@ prototype.buildPaths = function(apiDeclaration, tags) {
 };
 
 /*
- * Builds a Swagger 2.0 security object form a Swagger 1.2 authorizations object
- * @param oldAuthorizations {object} - Swagger 1.2 authorizations object
+ * Builds a Swagger 2.0 security object form a Swagger 1.x authorizations object
+ * @param oldAuthorizations {object} - Swagger 1.x authorizations object
  * @returns {object} - Swagger 2.0 security object
 */
 prototype.buildSecurity = function(oldAuthorizations) {
@@ -488,8 +530,8 @@ prototype.buildSecurity = function(oldAuthorizations) {
 };
 
 /*
- * Builds a Swagger 2.0 operation object form a Swagger 1.2 operation object
- * @param oldOperation {object} - Swagger 1.2 operation object
+ * Builds a Swagger 2.0 operation object form a Swagger 1.x operation object
+ * @param oldOperation {object} - Swagger 1.x operation object
  * @param operationDefaults {object} - defaults from containing apiDeclaration
  * @returns {object} - Swagger 2.0 operation object
 */
@@ -521,8 +563,8 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
 };
 
 /*
- * Builds a Swagger 2.0 responses object form a Swagger 1.2 responseMessages object
- * @param oldOperation {object} - Swagger 1.2 operation object
+ * Builds a Swagger 2.0 responses object form a Swagger 1.x responseMessages object
+ * @param oldOperation {object} - Swagger 1.x operation object
  * @returns {object} - Swagger 2.0 response object
 */
 prototype.buildResponses = function(oldOperation) {
@@ -547,8 +589,8 @@ prototype.buildResponses = function(oldOperation) {
 };
 
 /*
- * Converts Swagger 1.2 parameter object to Swagger 2.0 parameter object
- * @param oldParameter {object} - Swagger 1.2 parameter object
+ * Converts Swagger 1.x parameter object to Swagger 2.0 parameter object
+ * @param oldParameter {object} - Swagger 1.x parameter object
  * @returns {object} - Swagger 2.0 parameter object
  * @throws {SwaggerConverterError}
 */
@@ -616,11 +658,11 @@ prototype.buildParameter = function(oldParameter) {
 };
 
 /*
- * Converts Swagger 1.2 authorization definitions into Swagger 2.0 definitions
+ * Converts Swagger 1.x authorization definitions into Swagger 2.0 definitions
  * Definitions couldn't be converted 1 to 1, 'this.securityNamesMap' should be
- * used to map between Swagger 1.2 names and one or more Swagger 2.0 names.
+ * used to map between Swagger 1.x names and one or more Swagger 2.0 names.
  *
- * @param oldAuthorizations {object} - The Swagger 1.2 Authorizations definitions
+ * @param oldAuthorizations {object} - The Swagger 1.x Authorizations definitions
  * @returns {object} - Swagger 2.0 security definitions
  */
 prototype.buildSecurityDefinitions = function(oldAuthorizations) {
@@ -652,7 +694,7 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
     }
 
     this.securityNamesMap[name] = [];
-    // For OAuth2 types, 1.2 describes multiple "flows" in one authorization
+    // For OAuth2 types, 1.x describes multiple "flows" in one authorization
     // object. But for 2.0 we need to create one security definition per flow.
     this.forEach(oldAuthorization.grantTypes, function(oldGrantType, gtName) {
       var grantParameters = {};
@@ -690,8 +732,8 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
 };
 
 /*
- * Converts a Swagger 1.2 model object to a Swagger 2.0 model object
- * @param model {object} - Swagger 1.2 model object
+ * Converts a Swagger 1.x model object to a Swagger 2.0 model object
+ * @param model {object} - Swagger 1.x model object
  * @returns {object} - Swagger 2.0 model object
 */
 prototype.buildModel = function(oldModel) {
@@ -725,9 +767,9 @@ prototype.buildModel = function(oldModel) {
 };
 
 /*
- * Converts the "models" object of Swagger 1.2 specs to Swagger 2.0 definitions
+ * Converts the "models" object of Swagger 1.x specs to Swagger 2.0 definitions
  * object
- * @param oldModels {object} - an object containing Swagger 1.2 objects
+ * @param oldModels {object} - an object containing Swagger 1.x objects
  * @returns {object} - Swagger 2.0 definitions object
  * @throws {SwaggerConverterError}
 */
