@@ -27,7 +27,7 @@
 
 var fs = require('fs');
 var path = require('path');
-var convert = require('..').convert;
+var swaggerConverter = require('..');
 var expect = require('chai').expect;
 var sway = require('sway');
 var Immutable = require('seamless-immutable');
@@ -93,6 +93,7 @@ var inputs = [
 
 // Run testInput for each input folder
 inputs.forEach(testInput);
+testListApiDeclarations();
 
 function testInput(input) {
   var outputFile = fs.readFileSync(path.join(outputPath, input.output));
@@ -115,7 +116,8 @@ function testInput(input) {
   apiDeclarations = new Immutable(apiDeclarations);
 
   // Do the conversion
-  var converted = convert(resourceListing, apiDeclarations, input.options);
+  var converted = swaggerConverter.convert(resourceListing, apiDeclarations,
+    input.options);
 
   // For debugging:
   // fs.writeFileSync(input.output + '-converted',
@@ -160,4 +162,95 @@ function testInput(input) {
     });
   });
 
+}
+
+function testListApiDeclarations() {
+  var resourceListing;
+  var sourceUrl;
+
+  function testCase(msg, callback) {
+    it(msg, function() {
+      resourceListing = {
+        'swaggerVersion': '1.2',
+        'apis': [
+          {
+            'path': '/pet',
+            'description': 'Operations about pets'
+          },
+          {
+            'path': '/user',
+            'description': 'Operations about user'
+          },
+          {
+            'path': '/store',
+            'description': 'Operations about store'
+          }
+        ]
+      };
+      sourceUrl = 'http://test.com/api-docs.json';
+
+      var expectedResult = callback();
+      var result = swaggerConverter.listApiDeclarations(sourceUrl,
+        resourceListing);
+      expect(result).to.deep.equal(expectedResult);
+    });
+  }
+
+  describe('testing listApiDeclarations function', function() {
+    testCase('simple case', function() {
+      return {
+        '/pet': 'http://test.com/api-docs.json/pet',
+        '/user': 'http://test.com/api-docs.json/user',
+        '/store': 'http://test.com/api-docs.json/store'
+      };
+    });
+
+    testCase('embedded document', function() {
+      resourceListing.apis.forEach(function(api) {
+        api.operations = {method: 'GET'};
+      });
+      return {};
+    });
+
+    testCase('version 1.0', function() {
+      resourceListing.swaggerVersion = '1.0';
+      return {
+        '/pet': 'http://test.com/pet',
+        '/user': 'http://test.com/user',
+        '/store': 'http://test.com/store'
+      };
+    });
+
+    testCase('absolute paths', function() {
+      resourceListing.apis.forEach(function(api) {
+        api.path = 'http://foo.com' + api.path;
+      });
+      return {
+        'http://foo.com/pet': 'http://foo.com/pet',
+        'http://foo.com/user': 'http://foo.com/user',
+        'http://foo.com/store': 'http://foo.com/store'
+      };
+    });
+
+    testCase('basePath inside resourceListing', function() {
+      resourceListing.basePath = 'http://bar.com';
+      return {
+        '/pet': 'http://bar.com/pet',
+        '/user': 'http://bar.com/user',
+        '/store': 'http://bar.com/store'
+      };
+    });
+
+    testCase('URL with query parameter', function() {
+      //Disclaimer: This weird test doesn't produced by author's sick fantasy
+      //on a contrary it's taken from public Swagger spec and properly
+      //handled by 'SwaggerUI'.
+      resourceListing.basePath = 'http://bar.com?spec=';
+      return {
+        '/pet': 'http://bar.com/?spec=%2Fpet',
+        '/user': 'http://bar.com/?spec=%2Fuser',
+        '/store': 'http://bar.com/?spec=%2Fstore'
+      };
+    });
+  });
 }
