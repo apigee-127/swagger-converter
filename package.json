@@ -1,7 +1,7 @@
 {
   "name": "swagger-converter",
   "version": "1.0.1",
-  "description": "Swagger Converter",
+  "description": "Converts Swagger documents from version 1.x to version 2.0",
   "main": "index.js",
   "scripts": {
     "test": "mocha",
@@ -20,6 +20,7 @@
   },
   "keywords": [
     "Swagger",
+    "converter",
     "API"
   ],
   "author": "Mohsen Azimi <me@azimi.me>",
