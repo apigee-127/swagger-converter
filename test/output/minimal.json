@@ -1,8 +1,7 @@
 {
-    "swagger": "2.0",
     "info": {
-        "version": "1.0.0",
-        "title": "Title was not specified"
+        "title": "Title was not specified",
+        "version": "1.0.0"
     },
     "paths": {
         "/pets": {
@@ -30,12 +29,15 @@
             }
         }
     },
-    "tags": [{
-        "description": "A list of pets",
-        "name": "pets"
-    },
-    {
-        "description": "A list of stores",
-        "name": "stores"  
-    }]
+    "swagger": "2.0",
+    "tags": [
+        {
+            "description": "A list of pets",
+            "name": "pets"
+        },
+        {
+            "description": "A list of stores",
+            "name": "stores"
+        }
+    ]
 }
