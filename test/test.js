@@ -30,6 +30,7 @@ var path = require('path');
 var swaggerConverter = require('..');
 var expect = require('chai').expect;
 var sway = require('sway');
+var sortObject = require('deep-sort-object');
 var Immutable = require('seamless-immutable');
 var inputPath = './test/input/';
 var outputPath = './test/output/';
@@ -96,8 +97,7 @@ inputs.forEach(testInput);
 testListApiDeclarations();
 
 function testInput(input) {
-  var outputFile = fs.readFileSync(path.join(outputPath, input.output));
-  var outputObject = JSON.parse(outputFile.toString());
+  var outputFilePath = path.join(outputPath, input.output);
   var resourceListingPath = path.join(inputPath, input.resourceListing);
   var resourceListingFile = fs.readFileSync(resourceListingPath).toString();
   var resourceListing = JSON.parse(resourceListingFile);
@@ -118,10 +118,6 @@ function testInput(input) {
   // Do the conversion
   var converted = swaggerConverter.convert(resourceListing, apiDeclarations,
     input.options);
-
-  // For debugging:
-  // fs.writeFileSync(input.output + '-converted',
-  //   JSON.stringify(converted, null, 4));
 
   describe('converting file: ' + input.resourceListing, function() {
     describe('output', function() {
@@ -156,9 +152,16 @@ function testInput(input) {
           });
       });
 
-      it('should produce the same output as output file', function() {
-        expect(converted).to.deep.equal(outputObject);
-      });
+      if (process.env.WRITE_CONVERTED) {
+        var fileContent = JSON.stringify(sortObject(converted), null, 4) + '\n';
+        fs.writeFileSync(outputFilePath, fileContent);
+      }
+      else {
+        it('should produce the same output as output file', function() {
+          var outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
+          expect(converted).to.deep.equal(outputFile);
+        });
+      }
     });
   });
 
