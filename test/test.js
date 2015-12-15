@@ -30,6 +30,7 @@ var path = require('path');
 var swaggerConverter = require('..');
 var expect = require('chai').expect;
 var sway = require('sway');
+var sortObject = require('deep-sort-object');
 var Immutable = require('seamless-immutable');
 var inputPath = './test/input/';
 var outputPath = './test/output/';
@@ -96,8 +97,7 @@ inputs.forEach(testInput);
 testListApiDeclarations();
 
 function testInput(input) {
-  var outputFile = fs.readFileSync(path.join(outputPath, input.output));
-  var outputObject = JSON.parse(outputFile.toString());
+  var outputFilePath = path.join(outputPath, input.output);
   var resourceListingPath = path.join(inputPath, input.resourceListing);
   var resourceListingFile = fs.readFileSync(resourceListingPath).toString();
   var resourceListing = JSON.parse(resourceListingFile);
@@ -118,10 +118,6 @@ function testInput(input) {
   // Do the conversion
   var converted = swaggerConverter.convert(resourceListing, apiDeclarations,
     input.options);
-
-  // For debugging:
-  // fs.writeFileSync(input.output + '-converted',
-  //   JSON.stringify(converted, null, 4));
 
   describe('converting file: ' + input.resourceListing, function() {
     describe('output', function() {
@@ -156,20 +152,27 @@ function testInput(input) {
           });
       });
 
-      it('should produce the same output as output file', function() {
-        expect(converted).to.deep.equal(outputObject);
-      });
+      if (process.env.WRITE_CONVERTED) {
+        var fileContent = JSON.stringify(sortObject(converted), null, 4) + '\n';
+        fs.writeFileSync(outputFilePath, fileContent);
+      }
+      else {
+        it('should produce the same output as output file', function() {
+          var outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
+          expect(converted).to.deep.equal(outputFile);
+        });
+      }
     });
   });
 
 }
 
 function testListApiDeclarations() {
-  var resourceListing;
-  var sourceUrl;
+  describe('testing listApiDeclarations function', function() {
+    var resourceListing;
+    var sourceUrl;
 
-  function testCase(msg, callback) {
-    it(msg, function() {
+    beforeEach(function() {
       resourceListing = {
         'swaggerVersion': '1.2',
         'apis': [
@@ -188,69 +191,66 @@ function testListApiDeclarations() {
         ]
       };
       sourceUrl = 'http://test.com/api-docs.json';
-
-      var expectedResult = callback();
-      var result = swaggerConverter.listApiDeclarations(sourceUrl,
-        resourceListing);
-      expect(result).to.deep.equal(expectedResult);
     });
-  }
 
-  describe('testing listApiDeclarations function', function() {
-    testCase('simple case', function() {
-      return {
+    function listApiDeclarations() {
+      return swaggerConverter.listApiDeclarations(sourceUrl, resourceListing);
+    }
+
+    it('simple case', function() {
+      expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://test.com/api-docs.json/pet',
         '/user': 'http://test.com/api-docs.json/user',
         '/store': 'http://test.com/api-docs.json/store'
-      };
+      });
     });
 
-    testCase('embedded document', function() {
+    it('embedded document', function() {
       resourceListing.apis.forEach(function(api) {
         api.operations = {method: 'GET'};
       });
-      return {};
+      expect(listApiDeclarations()).to.deep.equal({});
     });
 
-    testCase('version 1.0', function() {
+    it('version 1.0', function() {
       resourceListing.swaggerVersion = '1.0';
-      return {
+      expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://test.com/pet',
         '/user': 'http://test.com/user',
         '/store': 'http://test.com/store'
-      };
+      });
     });
 
-    testCase('absolute paths', function() {
+    it('absolute paths', function() {
       resourceListing.apis.forEach(function(api) {
         api.path = 'http://foo.com' + api.path;
       });
-      return {
+      expect(listApiDeclarations()).to.deep.equal({
         'http://foo.com/pet': 'http://foo.com/pet',
         'http://foo.com/user': 'http://foo.com/user',
         'http://foo.com/store': 'http://foo.com/store'
-      };
+      });
     });
 
-    testCase('basePath inside resourceListing', function() {
+    it('basePath inside resourceListing', function() {
       resourceListing.basePath = 'http://bar.com';
-      return {
+      expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://bar.com/pet',
         '/user': 'http://bar.com/user',
         '/store': 'http://bar.com/store'
-      };
+      });
     });
 
-    testCase('URL with query parameter', function() {
+    it('URL with query parameter', function() {
       //Disclaimer: This weird test doesn't produced by author's sick fantasy
       //on a contrary it's taken from public Swagger spec and properly
       //handled by 'SwaggerUI'.
       resourceListing.basePath = 'http://bar.com?spec=';
-      return {
+      expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://bar.com/?spec=%2Fpet',
         '/user': 'http://bar.com/?spec=%2Fuser',
         '/store': 'http://bar.com/?spec=%2Fstore'
-      };
+      });
     });
   });
 }

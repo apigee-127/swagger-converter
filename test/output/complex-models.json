@@ -1,25 +1,45 @@
 {
-    "swagger": "2.0",
+    "definitions": {
+        "LongProject": {
+            "description": "A Project object.",
+            "example": {
+                "id": 1337
+            },
+            "properties": {
+                "id": {
+                    "description": "Project ID",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        },
+        "Project": {
+            "description": "A Project object.",
+            "properties": {
+                "id": {
+                    "description": "Project ID",
+                    "example": 1337,
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        }
+    },
     "info": {
         "title": "Title was not specified",
         "version": "v1"
     },
-    "tags": [
-        {
-            "name": "projects",
-            "description": "A list of projects"
-        }
-    ],
     "paths": {
         "/projects/{id}.json": {
             "get": {
-                "tags": [
-                    "projects"
-                ],
                 "parameters": [
                     {
-                        "in": "path",
                         "description": "Project Id",
+                        "in": "path",
                         "name": "id",
                         "required": true,
                         "type": "integer"
@@ -32,38 +52,18 @@
                             "$ref": "#/definitions/Project"
                         }
                     }
-                }
+                },
+                "tags": [
+                    "projects"
+                ]
             }
         }
     },
-    "definitions": {
-        "Project": {
-            "description": "A Project object.",
-            "required": [
-                "id"
-            ],
-            "properties": {
-                "id": {
-                    "type": "integer",
-                    "description": "Project ID",
-                    "example": 1337
-                }
-            }
-        },
-        "LongProject": {
-            "description": "A Project object.",
-            "required": [
-                "id"
-            ],
-            "properties": {
-                "id": {
-                    "type": "integer",
-                    "description": "Project ID"
-                }
-            },
-            "example": {
-                "id": 1337
-            }
+    "swagger": "2.0",
+    "tags": [
+        {
+            "description": "A list of projects",
+            "name": "projects"
         }
-    }
+    ]
 }

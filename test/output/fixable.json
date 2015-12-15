@@ -1,51 +1,56 @@
 {
     "basePath": "/v1/",
-    "swagger": "2.0",
+    "definitions": {
+        "BrokenModel": {
+            "properties": {
+                "map": {
+                    "additionalProperties": {
+                        "type": "integer"
+                    },
+                    "description": "Unofficial map type"
+                },
+                "required": {
+                    "description": "Per-property required",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "required"
+            ]
+        }
+    },
     "info": {
         "title": "Title was not specified",
         "version": "1.0.0"
     },
-    "tags": [
-        {
-            "name": "pets",
-            "description": "A list of pets"
-        },
-        {
-            "name": "stores",
-            "description": "A list of stores"
-        }
-    ],
     "paths": {
         "/pets": {
             "get": {
-                "tags": [
-                    "pets"
-                ],
                 "parameters": [
                     {
-                        "in": "body",
                         "description": "Body parameter with missing name",
-                        "x-whatever": "foo",
+                        "in": "body",
+                        "name": "body",
                         "schema": {
                             "$ref": "#/definitions/BrokenModel"
                         },
-                        "name": "body"
+                        "x-whatever": "foo"
                     },
                     {
                         "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
                         "name": "ItemsIsString",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
+                        "type": "array"
                     },
                     {
                         "in": "query",
-                        "name": "MissingItems",
-                        "type": "array",
                         "items": {
                             "type": "string"
-                        }
+                        },
+                        "name": "MissingItems",
+                        "type": "array"
                     },
                     {
                         "in": "query",
@@ -73,39 +78,34 @@
                     "200": {
                         "description": "Return all pets"
                     }
-                }
+                },
+                "tags": [
+                    "pets"
+                ]
             }
         },
         "/stores": {
             "get": {
-                "tags": [
-                    "stores"
-                ],
                 "responses": {
                     "200": {
                         "description": "Return all stores"
                     }
-                }
+                },
+                "tags": [
+                    "stores"
+                ]
             }
         }
     },
-    "definitions": {
-        "BrokenModel": {
-            "required": [
-                "required"
-            ],
-            "properties": {
-                "map": {
-                    "additionalProperties": {
-                        "type": "integer"
-                    },
-                    "description": "Unofficial map type"
-                },
-                "required": {
-                    "type": "string",
-                    "description": "Per-property required"
-                }
-            }
+    "swagger": "2.0",
+    "tags": [
+        {
+            "description": "A list of pets",
+            "name": "pets"
+        },
+        {
+            "description": "A list of stores",
+            "name": "stores"
         }
-    }
+    ]
 }
