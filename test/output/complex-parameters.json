@@ -1,24 +1,60 @@
 {
-    "swagger": "2.0",
     "info": {
         "title": "Complex Parameters test",
         "version": "1.0.0"
     },
     "paths": {
         "/": {
-            "post": {
-                "summary": "POST to root",
+            "get": {
                 "parameters": [
                     {
-                        "in": "body",
+                        "default": "latest",
+                        "description": "The document ID",
+                        "in": "query",
+                        "name": "documentId",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "description": "The array of document IDs",
+                        "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "documentIds",
+                        "required": false,
+                        "type": "array"
+                    },
+                    {
+                        "description": "The array of author IDs",
+                        "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "authorIds",
+                        "required": false,
+                        "type": "array"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "GET successful"
+                    }
+                },
+                "summary": "GET from root"
+            },
+            "post": {
+                "parameters": [
+                    {
                         "description": "The document",
+                        "in": "body",
                         "name": "document",
                         "required": true,
                         "schema": {
-                            "type": "integer",
-                            "minimum": 0,
+                            "default": 0,
                             "maximum": 100,
-                            "default": 0
+                            "minimum": 0,
+                            "type": "integer"
                         }
                     }
                 ],
@@ -26,46 +62,10 @@
                     "200": {
                         "description": "POST successful"
                     }
-                }
-            },
-            "get": {
-                "summary": "GET from root",
-                "parameters": [
-                    {
-                        "in": "query",
-                        "description": "The document ID",
-                        "name": "documentId",
-                        "required": false,
-                        "type": "string",
-                        "default": "latest"
-                    },
-                    {
-                        "in": "query",
-                        "description": "The array of document IDs",
-                        "name": "documentIds",
-                        "required": false,
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "in": "query",
-                        "description": "The array of author IDs",
-                        "name": "authorIds",
-                        "required": false,
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "GET successful"
-                    }
-                }
+                },
+                "summary": "POST to root"
             }
         }
-    }
+    },
+    "swagger": "2.0"
 }
