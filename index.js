@@ -602,9 +602,9 @@ prototype.buildParameter = function(oldParameter) {
     required: fixNonStringValue(oldParameter.required)
   });
 
-  Object.keys(oldParameter).forEach(function(property) {
-    if (property.match(/^X-/i) !== null) {
-      parameter[property] = oldParameter[property];
+  this.forEach(oldParameter, function(oldProperty, name) {
+    if (name.match(/^X-/i) !== null) {
+      parameter[name] = oldProperty;
     }
   });
 
