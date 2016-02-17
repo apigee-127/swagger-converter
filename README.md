@@ -55,7 +55,7 @@ var swaggerConverter = require('swagger-converter');
 
 var resourceListing = require('/path/to/petstore/index.json');
 
-var apiDeclarations = swaggerConverter.convert('http://test.com/api-docs', resourceListing);
+var apiDeclarations = swaggerConverter.listApiDeclarations('http://test.com/api-docs', resourceListing);
 
 console.log(JSON.stringify(apiDeclarations, null, 2));
 /*
