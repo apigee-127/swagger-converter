@@ -739,22 +739,23 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
 prototype.buildModel = function(oldModel) {
   var required = [];
   var properties = {};
+  var items;
 
   this.forEach(oldModel.properties, function(oldProperty, propertyName) {
     if (fixNonStringValue(oldProperty.required) === true) {
       required.push(propertyName);
     }
 
-    properties[propertyName] = extend({},
-      this.buildDataType(oldProperty, true),
-      {
-        description: oldProperty.description,
-        example: oldProperty.example
-      }
-    );
+    properties[propertyName] = this.buildModel(oldProperty);
   });
 
-  required = oldModel.required || required;
+  if (Array.isArray(oldModel.required)) {
+    required = oldModel.required;
+  }
+
+  if (isValue(oldModel.items)) {
+    items = this.buildModel(oldModel.items);
+  }
 
   return extend(this.buildDataType(oldModel, true),
   {
@@ -762,7 +763,8 @@ prototype.buildModel = function(oldModel) {
     required: undefinedIfEmpty(required),
     properties: undefinedIfEmpty(properties),
     discriminator: oldModel.discriminator,
-    example: oldModel.example
+    example: oldModel.example,
+    items: undefinedIfEmpty(items),
   });
 };
 

@@ -52,6 +52,33 @@
         "id": {
           "type": "integer",
           "description": "Project ID"
+        },
+        "assigned": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "Employee ID"
+            },
+            "email": {
+              "type": "string"
+            }
+          }
+        },
+        "subProjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "finished": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "integer",
+                "description": "Project ID"
+              }
+            }
+          }
         }
       },
       "description": "A Project object.",
