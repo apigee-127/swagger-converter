@@ -6,9 +6,36 @@
                 "id": 1337
             },
             "properties": {
+                "assigned": {
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "description": "Employee ID",
+                            "type": "integer"
+                        }
+                    },
+                    "type": "object"
+                },
                 "id": {
                     "description": "Project ID",
                     "type": "integer"
+                },
+                "subProjects": {
+                    "items": {
+                        "properties": {
+                            "finished": {
+                                "type": "boolean"
+                            },
+                            "id": {
+                                "description": "Project ID",
+                                "type": "integer"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
                 }
             },
             "required": [
