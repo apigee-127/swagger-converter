@@ -4,11 +4,11 @@
   "basePath": "/v1/",
   "apis": [
     {
-      "path": "/pets",
+      "path": "/swagger_files/my/pets",
       "description": "A list of pets"
     },
     {
-      "path": "/stores",
+      "path": "/swagger_files/our/stores",
       "description": "A list of stores"
     }
   ]

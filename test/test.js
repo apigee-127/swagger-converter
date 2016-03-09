@@ -78,8 +78,8 @@ var inputs = [
   {
     resourceListing: 'fixable/index.json',
     apiDeclarations: {
-      '/pets': 'fixable/pets.json',
-      '/stores': 'fixable/stores.json'
+      '/swagger_files/my/pets': 'fixable/pets.json',
+      '/swagger_files/our/stores': 'fixable/stores.json'
     },
     output: 'fixable.json'
   },
