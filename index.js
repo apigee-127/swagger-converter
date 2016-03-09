@@ -26,6 +26,7 @@
 
 var assert = require('assert');
 var URI = require('urijs');
+var commonPrefix = require('common-prefix');
 
 var SwaggerConverter = module.exports = {};
 
@@ -198,28 +199,29 @@ Converter.prototype.getResources = function(resourceListing, apiDeclarations) {
  * @returns {array} - list of Swagger 2.0 tags
 */
 Converter.prototype.buildTags = function(resourceListing, resources) {
-  var resourcePaths = [];
-  this.forEach(resources, function(resource) {
-    var path = resource.resourcePath;
-    if (isValue(resource) && resourcePaths.indexOf(path) === -1) {
-      resourcePaths.push(path);
-    }
+  var resourcePaths = this.mapEach(resources, function(resource) {
+    return resource.resourcePath;
   });
 
   //'resourcePath' is optional parameter and also frequently have invalid values
   // if so than we discard all values and use resource paths for listing instead.
-  if (getLength(resourcePaths) < getLength(resources)) {
-    resourcePaths = {};
+  if (getLength(removeDuplicates(resourcePaths)) < getLength(resources)) {
+    resourcePaths = this.mapEach(resourceListing.apis, function(resource) {
+      return resource.path;
+    });
   }
+
+  resourcePaths = stripCommonPath(resourcePaths);
 
   var tags = [];
   this.forEach(resourceListing.apis, function(resource, index) {
-    if (!isEmpty(resource.operations)) {
-      return;
-    }
+    if (!isEmpty(resource.operations)) { return; }
 
-    var path = resourcePaths[index] || resource.path;
-    var tagName = this.extractTag(path);
+    var tagName = URI(resourcePaths[index] || '').path(true)
+      .replace('{format}', 'json')
+      .replace(/\/$/, '')
+      .replace(/.json$/, '');
+
     if (!isValue(tagName)) { return; }
 
     tags.push(extend({}, {
@@ -229,21 +231,6 @@ Converter.prototype.buildTags = function(resourceListing, resources) {
   });
 
   return tags;
-};
-
-/*
- * Extract name of the tag from resourcePath
- * @param resourcePath {string} - Swagger 1.x resource path
- * @returns {string} - tag name
-*/
-prototype.extractTag = function(resourcePath) {
-  var tag = URI(resourcePath || '').path(true)
-    .replace('{format}', 'json')
-    .replace(/\/$/, '')
-    .replace(/.json$/, '')
-    .split(['/']).pop();
-
-  return tag || undefined;
 };
 
 /*
@@ -978,6 +965,20 @@ function fixNonStringValue(value, skipError) {
  */
 function removeDuplicates(collection) {
   return collection.filter(function(e, i, arr) {
-    return arr.lastIndexOf(e) === i;
+    return isValue(e) && arr.lastIndexOf(e) === i;
+  });
+}
+
+/*
+ * Strip common prefix from paths
+ * @params paths {array}
+ * @returns {array} - path with remove common part
+ */
+function stripCommonPath(paths) {
+  var prefix = commonPrefix(paths);
+  var prefixLength = prefix.lastIndexOf('/') + 1;
+
+  return paths.map(function(str) {
+    return str.slice(prefixLength);
   });
 }
