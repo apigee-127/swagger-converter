@@ -27,6 +27,7 @@
 
 var assert = require('assert');
 var URI = require('urijs');
+var commonPrefix = require('common-prefix');
 
 var SwaggerConverter = module.exports = {};
 
@@ -199,28 +200,29 @@ Converter.prototype.getResources = function(resourceListing, apiDeclarations) {
  * @returns {array} - list of Swagger 2.0 tags
 */
 Converter.prototype.buildTags = function(resourceListing, resources) {
-  var resourcePaths = [];
-  this.forEach(resources, function(resource) {
-    var path = resource.resourcePath;
-    if (isValue(resource) && resourcePaths.indexOf(path) === -1) {
-      resourcePaths.push(path);
-    }
+  var resourcePaths = this.mapEach(resources, function(resource) {
+    return resource.resourcePath;
   });
 
   //'resourcePath' is optional parameter and also frequently have invalid values
   // if so than we discard all values and use resource paths for listing instead.
-  if (getLength(resourcePaths) < getLength(resources)) {
-    resourcePaths = {};
+  if (getLength(removeDuplicates(resourcePaths)) < getLength(resources)) {
+    resourcePaths = this.mapEach(resourceListing.apis, function(resource) {
+      return resource.path;
+    });
   }
+
+  resourcePaths = stripCommonPath(resourcePaths);
 
   var tags = [];
   this.forEach(resourceListing.apis, function(resource, index) {
-    if (!isEmpty(resource.operations)) {
-      return;
-    }
+    if (!isEmpty(resource.operations)) { return; }
 
-    var path = resourcePaths[index] || resource.path;
-    var tagName = this.extractTag(path);
+    var tagName = URI(resourcePaths[index] || '').path(true)
+      .replace('{format}', 'json')
+      .replace(/\/$/, '')
+      .replace(/.json$/, '');
+
     if (!isValue(tagName)) { return; }
 
     tags.push(extend({}, {
@@ -230,21 +232,6 @@ Converter.prototype.buildTags = function(resourceListing, resources) {
   });
 
   return tags;
-};
-
-/*
- * Extract name of the tag from resourcePath
- * @param resourcePath {string} - Swagger 1.x resource path
- * @returns {string} - tag name
-*/
-prototype.extractTag = function(resourcePath) {
-  var tag = URI(resourcePath || '').path(true)
-    .replace('{format}', 'json')
-    .replace(/\/$/, '')
-    .replace(/.json$/, '')
-    .split(['/']).pop();
-
-  return tag || undefined;
 };
 
 /*
@@ -979,11 +966,25 @@ function fixNonStringValue(value, skipError) {
  */
 function removeDuplicates(collection) {
   return collection.filter(function(e, i, arr) {
-    return arr.lastIndexOf(e) === i;
+    return isValue(e) && arr.lastIndexOf(e) === i;
   });
 }
 
-},{"assert":2,"urijs":7}],2:[function(require,module,exports){
+/*
+ * Strip common prefix from paths
+ * @params paths {array}
+ * @returns {array} - path with remove common part
+ */
+function stripCommonPath(paths) {
+  var prefix = commonPrefix(paths);
+  var prefixLength = prefix.lastIndexOf('/') + 1;
+
+  return paths.map(function(str) {
+    return str.slice(prefixLength);
+  });
+}
+
+},{"assert":2,"common-prefix":3,"urijs":8}],2:[function(require,module,exports){
 // http://wiki.commonjs.org/wiki/Unit_Testing/1.0
 //
 // THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
@@ -1344,7 +1345,30 @@ var objectKeys = Object.keys || function (obj) {
   return keys;
 };
 
-},{"util/":10}],3:[function(require,module,exports){
+},{"util/":11}],3:[function(require,module,exports){
+module.exports = common
+
+function common (strings) {
+  if (!Array.isArray(strings)) {
+    throw new Error('common-prefix expects an array of strings')
+  }
+
+  var first = strings[0] || ''
+  var commonLength = first.length
+
+  for (var i = 1; i < strings.length; ++i) {
+    for (var j = 0; j < commonLength; ++j) {
+      if (strings[i].charAt(j) !== first.charAt(j)) {
+        commonLength = j
+        break
+      }
+    }
+  }
+
+  return first.slice(0, commonLength)
+}
+
+},{}],4:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -1369,7 +1393,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -1462,19 +1486,18 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /*!
  * URI.js - Mutating URLs
  * IPv6 Support
  *
- * Version: 1.17.0
+ * Version: 1.17.1
  *
  * Author: Rodney Rehm
  * Web: http://medialize.github.io/URI.js/
  *
  * Licensed under
  *   MIT License http://www.opensource.org/licenses/mit-license
- *   GPL v3 http://opensource.org/licenses/GPL-3.0
  *
  */
 
@@ -1652,19 +1675,18 @@ process.umask = function() { return 0; };
   };
 }));
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /*!
  * URI.js - Mutating URLs
  * Second Level Domain (SLD) Support
  *
- * Version: 1.17.0
+ * Version: 1.17.1
  *
  * Author: Rodney Rehm
  * Web: http://medialize.github.io/URI.js/
  *
  * Licensed under
  *   MIT License http://www.opensource.org/licenses/mit-license
- *   GPL v3 http://opensource.org/licenses/GPL-3.0
  *
  */
 
@@ -1895,18 +1917,17 @@ process.umask = function() { return 0; };
   return SLD;
 }));
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 /*!
  * URI.js - Mutating URLs
  *
- * Version: 1.17.0
+ * Version: 1.17.1
  *
  * Author: Rodney Rehm
  * Web: http://medialize.github.io/URI.js/
  *
  * Licensed under
  *   MIT License http://www.opensource.org/licenses/mit-license
- *   GPL v3 http://opensource.org/licenses/GPL-3.0
  *
  */
 (function (root, factory) {
@@ -1970,7 +1991,7 @@ process.umask = function() { return 0; };
     return this;
   }
 
-  URI.version = '1.17.0';
+  URI.version = '1.17.1';
 
   var p = URI.prototype;
   var hasOwn = Object.prototype.hasOwnProperty;
@@ -2693,18 +2714,35 @@ process.umask = function() { return 0; };
     }
   };
   URI.hasQuery = function(data, name, value, withinArray) {
-    if (typeof name === 'object') {
-      for (var key in name) {
-        if (hasOwn.call(name, key)) {
-          if (!URI.hasQuery(data, key, name[key])) {
-            return false;
+    switch (getType(name)) {
+      case 'String':
+        // Nothing to do here
+        break;
+
+      case 'RegExp':
+        for (var key in data) {
+          if (hasOwn.call(data, key)) {
+            if (name.test(key) && (value === undefined || URI.hasQuery(data, key, value))) {
+              return true;
+            }
           }
         }
-      }
 
-      return true;
-    } else if (typeof name !== 'string') {
-      throw new TypeError('URI.hasQuery() accepts an object, string as the name parameter');
+        return false;
+
+      case 'Object':
+        for (var _key in name) {
+          if (hasOwn.call(name, _key)) {
+            if (!URI.hasQuery(data, _key, name[_key])) {
+              return false;
+            }
+          }
+        }
+
+        return true;
+
+      default:
+        throw new TypeError('URI.hasQuery() accepts a string, regular expression or object as the name parameter');
     }
 
     switch (getType(value)) {
@@ -3122,8 +3160,6 @@ process.umask = function() { return 0; };
 
   // compound accessors
   p.origin = function(v, build) {
-    var parts;
-
     if (this._parts.urn) {
       return v === undefined ? '' : this;
     }
@@ -3131,7 +3167,10 @@ process.umask = function() { return 0; };
     if (v === undefined) {
       var protocol = this.protocol();
       var authority = this.authority();
-      if (!authority) return '';
+      if (!authority) {
+        return '';
+      }
+
       return (protocol ? protocol + '://' : '') + this.authority();
     } else {
       var origin = URI(v);
@@ -3715,6 +3754,8 @@ process.umask = function() { return 0; };
       return this;
     }
 
+    _path = URI.recodePath(_path);
+
     var _was_relative;
     var _leadingParents = '';
     var _parent, _pos;
@@ -3745,7 +3786,7 @@ process.umask = function() { return 0; };
 
     // resolve parents
     while (true) {
-      _parent = _path.indexOf('/..');
+      _parent = _path.search(/\/\.\.(\/|$)/);
       if (_parent === -1) {
         // no more ../ to resolve
         break;
@@ -3767,7 +3808,6 @@ process.umask = function() { return 0; };
       _path = _leadingParents + _path.substring(1);
     }
 
-    _path = URI.recodePath(_path);
     this._parts.path = _path;
     this.build(!build);
     return this;
@@ -4058,17 +4098,22 @@ process.umask = function() { return 0; };
   return URI;
 }));
 
-},{"./IPv6":5,"./SecondLevelDomains":6,"./punycode":8}],8:[function(require,module,exports){
+},{"./IPv6":6,"./SecondLevelDomains":7,"./punycode":9}],9:[function(require,module,exports){
 (function (global){
-/*! http://mths.be/punycode v1.2.3 by @mathias */
+/*! https://mths.be/punycode v1.4.0 by @mathias */
 ;(function(root) {
 
 	/** Detect free variables */
-	var freeExports = typeof exports == 'object' && exports;
+	var freeExports = typeof exports == 'object' && exports &&
+		!exports.nodeType && exports;
 	var freeModule = typeof module == 'object' && module &&
-		module.exports == freeExports && module;
+		!module.nodeType && module;
 	var freeGlobal = typeof global == 'object' && global;
-	if (freeGlobal.global === freeGlobal || freeGlobal.window === freeGlobal) {
+	if (
+		freeGlobal.global === freeGlobal ||
+		freeGlobal.window === freeGlobal ||
+		freeGlobal.self === freeGlobal
+	) {
 		root = freeGlobal;
 	}
 
@@ -4094,8 +4139,8 @@ process.umask = function() { return 0; };
 
 	/** Regular expressions */
 	regexPunycode = /^xn--/,
-	regexNonASCII = /[^ -~]/, // unprintable ASCII chars + non-ASCII chars
-	regexSeparators = /\x2E|\u3002|\uFF0E|\uFF61/g, // RFC 3490 separators
+	regexNonASCII = /[^\x20-\x7E]/, // unprintable ASCII chars + non-ASCII chars
+	regexSeparators = /[\x2E\u3002\uFF0E\uFF61]/g, // RFC 3490 separators
 
 	/** Error messages */
 	errors = {
@@ -4121,7 +4166,7 @@ process.umask = function() { return 0; };
 	 * @returns {Error} Throws a `RangeError` with the applicable error message.
 	 */
 	function error(type) {
-		throw RangeError(errors[type]);
+		throw new RangeError(errors[type]);
 	}
 
 	/**
@@ -4134,23 +4179,37 @@ process.umask = function() { return 0; };
 	 */
 	function map(array, fn) {
 		var length = array.length;
+		var result = [];
 		while (length--) {
-			array[length] = fn(array[length]);
+			result[length] = fn(array[length]);
 		}
-		return array;
+		return result;
 	}
 
 	/**
-	 * A simple `Array#map`-like wrapper to work with domain name strings.
+	 * A simple `Array#map`-like wrapper to work with domain name strings or email
+	 * addresses.
 	 * @private
-	 * @param {String} domain The domain name.
+	 * @param {String} domain The domain name or email address.
 	 * @param {Function} callback The function that gets called for every
 	 * character.
 	 * @returns {Array} A new string of characters returned by the callback
 	 * function.
 	 */
 	function mapDomain(string, fn) {
-		return map(string.split(regexSeparators), fn).join('.');
+		var parts = string.split('@');
+		var result = '';
+		if (parts.length > 1) {
+			// In email addresses, only the domain name should be punycoded. Leave
+			// the local part (i.e. everything up to `@`) intact.
+			result = parts[0] + '@';
+			string = parts[1];
+		}
+		// Avoid `split(regex)` for IE8 compatibility. See #17.
+		string = string.replace(regexSeparators, '\x2E');
+		var labels = string.split('.');
+		var encoded = map(labels, fn).join('.');
+		return result + encoded;
 	}
 
 	/**
@@ -4160,7 +4219,7 @@ process.umask = function() { return 0; };
 	 * UCS-2 exposes as separate characters) into a single code point,
 	 * matching UTF-16.
 	 * @see `punycode.ucs2.encode`
-	 * @see <http://mathiasbynens.be/notes/javascript-encoding>
+	 * @see <https://mathiasbynens.be/notes/javascript-encoding>
 	 * @memberOf punycode.ucs2
 	 * @name decode
 	 * @param {String} string The Unicode input string (UCS-2).
@@ -4254,7 +4313,7 @@ process.umask = function() { return 0; };
 
 	/**
 	 * Bias adaptation function as per section 3.4 of RFC 3492.
-	 * http://tools.ietf.org/html/rfc3492#section-3.4
+	 * https://tools.ietf.org/html/rfc3492#section-3.4
 	 * @private
 	 */
 	function adapt(delta, numPoints, firstTime) {
@@ -4290,7 +4349,6 @@ process.umask = function() { return 0; };
 		    k,
 		    digit,
 		    t,
-		    length,
 		    /** Cached calculation results */
 		    baseMinusT;
 
@@ -4370,8 +4428,8 @@ process.umask = function() { return 0; };
 	}
 
 	/**
-	 * Converts a string of Unicode symbols to a Punycode string of ASCII-only
-	 * symbols.
+	 * Converts a string of Unicode symbols (e.g. a domain name label) to a
+	 * Punycode string of ASCII-only symbols.
 	 * @memberOf punycode
 	 * @param {String} input The string of Unicode symbols.
 	 * @returns {String} The resulting Punycode string of ASCII-only symbols.
@@ -4484,17 +4542,18 @@ process.umask = function() { return 0; };
 	}
 
 	/**
-	 * Converts a Punycode string representing a domain name to Unicode. Only the
-	 * Punycoded parts of the domain name will be converted, i.e. it doesn't
-	 * matter if you call it on a string that has already been converted to
-	 * Unicode.
+	 * Converts a Punycode string representing a domain name or an email address
+	 * to Unicode. Only the Punycoded parts of the input will be converted, i.e.
+	 * it doesn't matter if you call it on a string that has already been
+	 * converted to Unicode.
 	 * @memberOf punycode
-	 * @param {String} domain The Punycode domain name to convert to Unicode.
+	 * @param {String} input The Punycoded domain name or email address to
+	 * convert to Unicode.
 	 * @returns {String} The Unicode representation of the given Punycode
 	 * string.
 	 */
-	function toUnicode(domain) {
-		return mapDomain(domain, function(string) {
+	function toUnicode(input) {
+		return mapDomain(input, function(string) {
 			return regexPunycode.test(string)
 				? decode(string.slice(4).toLowerCase())
 				: string;
@@ -4502,15 +4561,18 @@ process.umask = function() { return 0; };
 	}
 
 	/**
-	 * Converts a Unicode string representing a domain name to Punycode. Only the
-	 * non-ASCII parts of the domain name will be converted, i.e. it doesn't
-	 * matter if you call it with a domain that's already in ASCII.
+	 * Converts a Unicode string representing a domain name or an email address to
+	 * Punycode. Only the non-ASCII parts of the domain name will be converted,
+	 * i.e. it doesn't matter if you call it with a domain that's already in
+	 * ASCII.
 	 * @memberOf punycode
-	 * @param {String} domain The domain name to convert, as a Unicode string.
-	 * @returns {String} The Punycode representation of the given domain name.
+	 * @param {String} input The domain name or email address to convert, as a
+	 * Unicode string.
+	 * @returns {String} The Punycode representation of the given domain name or
+	 * email address.
 	 */
-	function toASCII(domain) {
-		return mapDomain(domain, function(string) {
+	function toASCII(input) {
+		return mapDomain(input, function(string) {
 			return regexNonASCII.test(string)
 				? 'xn--' + encode(string)
 				: string;
@@ -4526,11 +4588,11 @@ process.umask = function() { return 0; };
 		 * @memberOf punycode
 		 * @type String
 		 */
-		'version': '1.2.3',
+		'version': '1.3.2',
 		/**
 		 * An object of methods to convert from JavaScript's internal character
 		 * representation (UCS-2) to Unicode code points, and back.
-		 * @see <http://mathiasbynens.be/notes/javascript-encoding>
+		 * @see <https://mathiasbynens.be/notes/javascript-encoding>
 		 * @memberOf punycode
 		 * @type Object
 		 */
@@ -4552,32 +4614,35 @@ process.umask = function() { return 0; };
 		typeof define.amd == 'object' &&
 		define.amd
 	) {
-		define(function() {
+		define('punycode', function() {
 			return punycode;
 		});
-	}	else if (freeExports && !freeExports.nodeType) {
-		if (freeModule) { // in Node.js or RingoJS v0.8.0+
+	} else if (freeExports && freeModule) {
+		if (module.exports == freeExports) {
+			// in Node.js, io.js, or RingoJS v0.8.0+
 			freeModule.exports = punycode;
-		} else { // in Narwhal or RingoJS v0.7.0-
+		} else {
+			// in Narwhal or RingoJS v0.7.0-
 			for (key in punycode) {
 				punycode.hasOwnProperty(key) && (freeExports[key] = punycode[key]);
 			}
 		}
-	} else { // in Rhino or a web browser
+	} else {
+		// in Rhino or a web browser
 		root.punycode = punycode;
 	}
 
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -5167,5 +5232,5 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":9,"_process":4,"inherits":3}]},{},[1])(1)
+},{"./support/isBuffer":10,"_process":5,"inherits":4}]},{},[1])(1)
 });
