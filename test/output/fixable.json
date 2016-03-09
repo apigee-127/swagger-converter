@@ -80,6 +80,7 @@
                     }
                 },
                 "tags": [
+                    "my/pets",
                     "pets"
                 ]
             }
@@ -92,7 +93,7 @@
                     }
                 },
                 "tags": [
-                    "stores"
+                    "our/stores"
                 ]
             }
         }
@@ -101,11 +102,11 @@
     "tags": [
         {
             "description": "A list of pets",
-            "name": "pets"
+            "name": "my/pets"
         },
         {
             "description": "A list of stores",
-            "name": "stores"
+            "name": "our/stores"
         }
     ]
 }

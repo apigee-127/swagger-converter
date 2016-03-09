@@ -44,6 +44,7 @@
     "uglify-js": "^2.6.0"
   },
   "dependencies": {
+    "common-prefix": "^1.1.0",
     "urijs": "^1.16.1"
   }
 }
