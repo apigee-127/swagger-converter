@@ -84,6 +84,7 @@ var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations
 ### Options
 
 - `collectionFormat`[string] - assigned to every array parameter.
+- `buildTagsFromPaths`[bool] - ignore `resourcePath` and buid tags from resource `path`. Default: false.
 
 ### Development
 

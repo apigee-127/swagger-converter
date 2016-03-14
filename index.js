@@ -199,13 +199,21 @@ Converter.prototype.getResources = function(resourceListing, apiDeclarations) {
  * @returns {array} - list of Swagger 2.0 tags
 */
 Converter.prototype.buildTags = function(resourceListing, resources) {
-  var resourcePaths = this.mapEach(resources, function(resource) {
-    return resource.resourcePath;
-  });
+  var resourcePaths = [];
 
-  //'resourcePath' is optional parameter and also frequently have invalid values
-  // if so than we discard all values and use resource paths for listing instead.
-  if (getLength(removeDuplicates(resourcePaths)) < getLength(resources)) {
+  if (this.options.buildTagsFromPaths !== true) {
+    resourcePaths = this.mapEach(resources, function(resource) {
+      return resource.resourcePath;
+    });
+
+    //'resourcePath' is optional parameter and also frequently have invalid values
+    // if so than we discard all values and use resource paths for listing instead.
+    if (getLength(removeDuplicates(resourcePaths)) < getLength(resources)) {
+      resourcePaths = [];
+    }
+  }
+
+  if (isEmpty(resourcePaths)) {
     resourcePaths = this.mapEach(resourceListing.apis, function(resource) {
       return resource.path;
     });
