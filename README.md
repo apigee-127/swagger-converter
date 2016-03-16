@@ -22,7 +22,7 @@ npm install swagger-converter --save
 It's recommended to use command line tools like [**`swagger-tools`**][swagger-tools-npm] or [**`swagger-spec-converter`**][swagger-spec-converter] for converting your spec. This module will not handle validation and if your spec is not valid can produce invalid spec.
 
 ##### convert function
-`converter` accept accept following arguments:
+`convert` accept accept following arguments:
 
 * `resourceListing`(required) is Swagger 1.x entry point file.
 * `apiDeclarations`(required) is a map with paths from `resourceListing` as keys and resources as values
