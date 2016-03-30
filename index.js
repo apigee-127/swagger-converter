@@ -148,7 +148,8 @@ prototype.convert = function(resourceListing, apiDeclarations) {
     {
       swagger: '2.0',
       info: this.buildInfo(resourceListing),
-      tags: undefinedIfEmpty(tags),
+      //Order of tags depend on order of 'resourceListing.apis', so sort it
+      tags: undefinedIfEmpty(sortBy(tags, 'name')),
       paths: undefinedIfEmpty(paths),
       securityDefinitions: undefinedIfEmpty(securityDefinitions),
       definitions: undefinedIfEmpty(definitions)
@@ -968,7 +969,7 @@ function fixNonStringValue(value, skipError) {
 
 /*
  * Remove duplicates of an array
- * @params collection {array}
+ * @param collection {array}
  * @returns {array} - collection without duplicates
  */
 function removeDuplicates(collection) {
@@ -979,7 +980,7 @@ function removeDuplicates(collection) {
 
 /*
  * Strip common prefix from paths
- * @params paths {array}
+ * @param paths {array}
  * @returns {array} - path with remove common part
  */
 function stripCommonPath(paths) {
@@ -988,5 +989,20 @@ function stripCommonPath(paths) {
 
   return paths.map(function(str) {
     return str.slice(prefixLength);
+  });
+}
+
+/*
+ * Sort array by value of specified attribute
+ * @param array {array} - array to sort
+ * @param attr {attr} - attribute to sort by
+ * @returns {array} - sorted array
+ */
+function sortBy(array, attr) {
+  assert(Array.isArray(array));
+  return array.sort(function(a,b) {
+    a = a[attr];
+    b = b[attr];
+    return (a < b) ? -1 : ((a > b) ? 1 : 0);
   });
 }
