@@ -969,7 +969,7 @@ function fixNonStringValue(value, skipError) {
 
 /*
  * Remove duplicates of an array
- * @params collection {array}
+ * @param collection {array}
  * @returns {array} - collection without duplicates
  */
 function removeDuplicates(collection) {
@@ -980,7 +980,7 @@ function removeDuplicates(collection) {
 
 /*
  * Strip common prefix from paths
- * @params paths {array}
+ * @param paths {array}
  * @returns {array} - path with remove common part
  */
 function stripCommonPath(paths) {
