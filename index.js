@@ -566,7 +566,8 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
 prototype.buildResponses = function(oldOperation) {
   var responses = {
   };
-
+  
+  var responseAdded = false;
   this.forEach(oldOperation.responseMessages, function(oldResponse) {
     var code = '' + oldResponse.code;
     responses[code] = extend({}, {
@@ -574,16 +575,16 @@ prototype.buildResponses = function(oldOperation) {
       schema: undefinedIfEmpty(
         this.buildTypeProperties(oldResponse.responseModel, true))
     });
+    responseAdded = true;
   });
-  
-  if(responses.length === 0){
-      responses['200'] = extend({}, {description: 'No response was specified'});
+  if(!responseAdded){
+      responses = {
+        '200': {
+            description: 'No response was specified', 
+            schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
+        }
+      };
   }
-
-  extend(responses['200'], {
-    schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
-  });
-
   return responses;
 };
 
