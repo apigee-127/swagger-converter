@@ -568,7 +568,7 @@ prototype.buildResponses = function(oldOperation) {
   };
 
   var responseAdded = false;
-  this.forEach(oldOperation.responseMessages, function (oldResponse) {
+  this.forEach(oldOperation.responseMessages, function(oldResponse) {
     var code = '' + oldResponse.code;
     responses[code] = extend({}, {
       description: oldResponse.message || 'Description was not specified',
