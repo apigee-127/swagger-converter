@@ -565,7 +565,6 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
 */
 prototype.buildResponses = function(oldOperation) {
   var responses = {
-    '200': {description: 'No response was specified'}
   };
 
   this.forEach(oldOperation.responseMessages, function(oldResponse) {
@@ -576,6 +575,10 @@ prototype.buildResponses = function(oldOperation) {
         this.buildTypeProperties(oldResponse.responseModel, true))
     });
   });
+  
+  if(responses.length === 0){
+      responses['200'] = extend({}, {description: 'No response was specified'});
+  }
 
   extend(responses['200'], {
     schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
