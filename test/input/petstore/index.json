@@ -16,6 +16,9 @@
     }
   ],
   "authorizations": {
+    "basic": {
+      "type": "basicAuth"
+    },
     "oauth2": {
       "type": "oauth2",
       "scopes": [
@@ -26,6 +29,10 @@
         {
           "scope": "read:pets",
           "description": "Read your pets"
+        },
+        {
+          "scope": "test:anything",
+          "description": "anything"
         }
       ],
       "grantTypes": {

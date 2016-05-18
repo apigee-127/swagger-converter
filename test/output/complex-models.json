@@ -1,0 +1,96 @@
+{
+    "definitions": {
+        "LongProject": {
+            "description": "A Project object.",
+            "example": {
+                "id": 1337
+            },
+            "properties": {
+                "assigned": {
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "description": "Employee ID",
+                            "type": "integer"
+                        }
+                    },
+                    "type": "object"
+                },
+                "id": {
+                    "description": "Project ID",
+                    "type": "integer"
+                },
+                "subProjects": {
+                    "items": {
+                        "properties": {
+                            "finished": {
+                                "type": "boolean"
+                            },
+                            "id": {
+                                "description": "Project ID",
+                                "type": "integer"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        },
+        "Project": {
+            "description": "A Project object.",
+            "properties": {
+                "id": {
+                    "description": "Project ID",
+                    "example": 1337,
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        }
+    },
+    "info": {
+        "title": "Title was not specified",
+        "version": "v1"
+    },
+    "paths": {
+        "/projects/{id}.json": {
+            "get": {
+                "parameters": [
+                    {
+                        "description": "Project Id",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/Project"
+                        }
+                    }
+                },
+                "tags": [
+                    "projects"
+                ]
+            }
+        }
+    },
+    "swagger": "2.0",
+    "tags": [
+        {
+            "description": "A list of projects",
+            "name": "projects"
+        }
+    ]
+}

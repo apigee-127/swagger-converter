@@ -1,0 +1,112 @@
+{
+    "basePath": "/v1/",
+    "definitions": {
+        "BrokenModel": {
+            "properties": {
+                "map": {
+                    "additionalProperties": {
+                        "type": "integer"
+                    },
+                    "description": "Unofficial map type"
+                },
+                "required": {
+                    "description": "Per-property required",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "required"
+            ]
+        }
+    },
+    "info": {
+        "title": "Title was not specified",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/pets": {
+            "get": {
+                "parameters": [
+                    {
+                        "description": "Body parameter with missing name",
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "$ref": "#/definitions/BrokenModel"
+                        },
+                        "x-whatever": "foo"
+                    },
+                    {
+                        "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "ItemsIsString",
+                        "type": "array"
+                    },
+                    {
+                        "in": "query",
+                        "items": {
+                            "type": "string"
+                        },
+                        "name": "MissingItems",
+                        "type": "array"
+                    },
+                    {
+                        "in": "query",
+                        "name": "MissingType",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "InvalidDefault",
+                        "type": "integer"
+                    },
+                    {
+                        "in": "query",
+                        "name": "EmptyStringAsRequired",
+                        "type": "integer"
+                    },
+                    {
+                        "in": "query",
+                        "name": "InvalidBoolAsRequired",
+                        "required": false,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return all pets"
+                    }
+                },
+                "tags": [
+                    "my/pets",
+                    "pets"
+                ]
+            }
+        },
+        "/stores": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Return all stores"
+                    }
+                },
+                "tags": [
+                    "our/stores"
+                ]
+            }
+        }
+    },
+    "swagger": "2.0",
+    "tags": [
+        {
+            "description": "A list of pets",
+            "name": "my/pets"
+        },
+        {
+            "description": "A list of stores",
+            "name": "our/stores"
+        }
+    ]
+}

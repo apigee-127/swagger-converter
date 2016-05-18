@@ -1,24 +1,26 @@
 {
-    "swagger": "2.0",
-    "info": {
-        "version": "1.0.0",
-        "title": "Embedded"
-    },
     "basePath": "/petstore-api",
     "host": "petstore.example.com",
-    "schemes": [
-        "https"
-    ],
+    "info": {
+        "title": "Embedded",
+        "version": "1.0.0"
+    },
     "paths": {
         "/pets": {
             "get": {
-                "description": "",
                 "responses": {
                     "200": {
                         "description": "Return all pets"
                     }
-                }
+                },
+                "tags": [
+                    "pets"
+                ]
             }
         }
-    }
+    },
+    "schemes": [
+        "https"
+    ],
+    "swagger": "2.0"
 }

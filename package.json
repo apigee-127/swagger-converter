@@ -1,11 +1,17 @@
 {
   "name": "swagger-converter",
-  "version": "0.1.7",
-  "description": "Swagger Converter",
+  "version": "1.4.1",
+  "description": "Converts Swagger documents from version 1.x to version 2.0",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha",
-    "build": "npm test; ./node_modules/browserify/bin/cmd.js ./index.js > ./browser.js; ./node_modules/uglify-js/bin/uglifyjs ./browser.js > ./browser.min.js",
+    "test": "mocha",
+    "istanbul": "istanbul cover --report lcovonly _mocha",
+    "coveralls": "cat ./coverage/lcov.info | coveralls",
+    "pretest": "npm run build",
+    "browserify": "browserify index.js -s SwaggerConverter --outfile browser.js",
+    "preuglify": "npm run browserify",
+    "uglify": "uglifyjs browser.js > browser.min.js",
+    "build": "npm run uglify",
     "prepublish": "npm run build"
   },
   "repository": {
@@ -14,6 +20,7 @@
   },
   "keywords": [
     "Swagger",
+    "converter",
     "API"
   ],
   "author": "Mohsen Azimi <me@azimi.me>",
@@ -23,17 +30,21 @@
   },
   "homepage": "https://github.com/apigee-127/swagger-converter",
   "devDependencies": {
-    "browserify": "^7.0.0",
-    "chai": "^3.0.0",
-    "jscs": "^1.13.1",
-    "mocha": "^2.2.5",
-    "mocha-jscs": "^1.1.0",
-    "mocha-jshint": "2.2.3",
-    "seamless-immutable": "^2.4.1",
-    "swagger-tools": "^0.8.7",
-    "uglify-js": "^2.4.16"
+    "browserify": "^13.0.0",
+    "chai": "^3.4.1",
+    "coveralls": "^2.11.4",
+    "deep-sort-object": "^1.0.1",
+    "istanbul": "^0.4.0",
+    "jscs": "^2.5.1",
+    "mocha": "^2.3.3",
+    "mocha-jscs": "^4.0.0",
+    "mocha-jshint": "^2.2.5",
+    "seamless-immutable": "^5.0.1",
+    "sway": "^0.6.0",
+    "uglify-js": "^2.6.0"
   },
   "dependencies": {
-    "lodash.clonedeep": "^2.4.1"
+    "common-prefix": "^1.1.0",
+    "urijs": "^1.16.1"
   }
 }

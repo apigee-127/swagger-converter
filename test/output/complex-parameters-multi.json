@@ -16,6 +16,7 @@
                         "type": "string"
                     },
                     {
+                        "collectionFormat": "multi",
                         "description": "The array of document IDs",
                         "in": "query",
                         "items": {
@@ -26,6 +27,7 @@
                         "type": "array"
                     },
                     {
+                        "collectionFormat": "multi",
                         "description": "The array of author IDs",
                         "in": "query",
                         "items": {

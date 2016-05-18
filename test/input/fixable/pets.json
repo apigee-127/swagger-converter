@@ -1,0 +1,79 @@
+{
+  "apiVersion": "1.0.0",
+  "swaggerVersion": "1.2",
+  "basePath": ".",
+  "apis": [
+    {
+      "path": "pets",
+      "operations": [
+        {
+          "method": "GET",
+          "summary": "",
+          "tags": ["pets"],
+          "parameters": [
+            {
+              "description": "Body parameter with missing name",
+              "paramType": "body",
+              "x-whatever": "foo",
+              "type": "BrokenModel"
+            },
+            {
+              "name": "ItemsIsString",
+              "paramType": "query",
+              "type": "array",
+              "items": "string"
+            },
+            {
+              "name": "MissingItems",
+              "paramType": "query",
+              "type": "array"
+            },
+            {
+              "name": "MissingType",
+              "paramType": "query"
+            },
+            {
+              "name": "InvalidDefault",
+              "paramType": "query",
+              "type": "integer",
+              "default": "BadValue"
+            },
+            {
+              "name": "EmptyStringAsRequired",
+              "paramType": "query",
+              "type": "integer",
+              "required": ""
+            },
+            {
+              "name": "InvalidBoolAsRequired",
+              "paramType": "query",
+              "type": "integer",
+              "required": "False"
+            }
+          ],
+          "responseMessages": [
+            {
+              "code": 200,
+              "message": "Return all pets"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "models": {
+    "BrokenModel": {
+      "properties": {
+        "map": {
+          "description": "Unofficial map type",
+          "type": "Map[String, Integer]"
+        },
+        "required": {
+          "description": "Per-property required",
+          "type": "string",
+          "required": true
+        }
+      }
+    }
+  }
+}

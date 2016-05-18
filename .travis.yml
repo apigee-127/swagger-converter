@@ -1,4 +1,18 @@
+sudo: false
 language: node_js
+script:
+- npm run istanbul
+after_success:
+- npm run coveralls
 node_js:
-  - '0.10'
-  - '0.12'
+- stable
+- '0.10'
+- '0.12'
+deploy:
+  provider: npm
+  email: me@azimi.me
+  api_key:
+    secure: mOlrEfmht8c87rQovxPoe8Q5pvbb6AYIiLBI32wPBlhU8AgZnIPdkn5Y3CMxVtBH+jon2UuGDf6ZJd3axtFfPyVwhvji62fnfrjFHcbhiL0WCbmgsnraiXw8gkf0HZE0VwoLLfjCGIpReap+HzTSJuxtzQURIvwtbe7TiDtLDKY=
+  on:
+    tags: true
+    repo: apigee-127/swagger-converter

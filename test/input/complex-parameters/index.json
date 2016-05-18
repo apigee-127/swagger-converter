@@ -41,6 +41,21 @@
               "required": false,
               "type": "string",
               "defaultValue": "latest"
+            },
+            {
+              "name": "documentIds",
+              "paramType": "query",
+              "description": "The array of document IDs",
+              "required": false,
+              "type": "List[string]"
+            },
+            {
+              "name": "authorIds",
+              "paramType": "query",
+              "description": "The array of author IDs",
+              "required": false,
+              "type": "array",
+              "items": "string"
             }
           ],
           "responseMessages": [

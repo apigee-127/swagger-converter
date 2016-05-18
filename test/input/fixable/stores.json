@@ -1,26 +1,23 @@
 {
   "apiVersion": "1.0.0",
   "swaggerVersion": "1.2",
-  "basePath": "https://petstore.example.com/petstore-api",
+  "basePath": ".",
+  "resourcePath": "/stores",
   "apis": [
     {
-      "path": "/pets",
+      "path": "/stores",
       "operations": [
         {
           "method": "GET",
           "summary": "",
-          "tags": ["pets"],
           "responseMessages": [
             {
               "code": 200,
-              "message": "Return all pets"
+              "message": "Return all stores"
             }
           ]
         }
       ]
     }
-  ],
-  "info": {
-    "title": "Embedded"
-  }
+  ]
 }
