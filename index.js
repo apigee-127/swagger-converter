@@ -451,6 +451,8 @@ prototype.buildDataType = function(oldDataType, allowRef) {
     uniqueItems: fixNonStringValue(oldDataType.uniqueItems),
     minimum: fixNonStringValue(oldDataType.minimum),
     maximum: fixNonStringValue(oldDataType.maximum),
+    maxItems: fixNonStringValue(oldDataType.maxItems),
+    minItems: fixNonStringValue(oldDataType.minItems),
     default: defaultValue,
     enum: oldDataType.enum,
   });
