@@ -6,8 +6,6 @@ after_success:
 - npm run coveralls
 node_js:
 - stable
-- '0.10'
-- '0.12'
 deploy:
   provider: npm
   email: me@azimi.me
