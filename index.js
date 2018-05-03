@@ -698,21 +698,21 @@ prototype.buildSecurityDefinitions = function(oldAuthorizations) {
       var grantParameters = {};
 
       switch (gtName) {
-      case 'implicit':
-        extend(grantParameters, {
-          flow: 'implicit',
-          authorizationUrl: getValue(oldGrantType, 'loginEndpoint', 'url')
-        });
-        break;
+        case 'implicit':
+          extend(grantParameters, {
+            flow: 'implicit',
+            authorizationUrl: getValue(oldGrantType, 'loginEndpoint', 'url')
+          });
+          break;
 
-      case 'authorization_code':
-        extend(grantParameters, {
-          flow: 'accessCode',
-          tokenUrl: getValue(oldGrantType, 'tokenEndpoint', 'url'),
-          authorizationUrl:
-            getValue(oldGrantType, 'tokenRequestEndpoint', 'url')
-        });
-        break;
+        case 'authorization_code':
+          extend(grantParameters, {
+            flow: 'accessCode',
+            tokenUrl: getValue(oldGrantType, 'tokenEndpoint', 'url'),
+            authorizationUrl:
+              getValue(oldGrantType, 'tokenRequestEndpoint', 'url')
+          });
+          break;
       }
 
       var oName = name;
