@@ -89,6 +89,13 @@ var inputs = [
       '/projects': 'complex-models/projects.json'
     },
     output: 'complex-models.json'
+  },
+  {
+    resourceListing: 'custom/index.json',
+    apiDeclarations: {
+      '/custom': 'custom/custom.json'
+    },
+    output: 'custom.json'
   }
 ];
 
