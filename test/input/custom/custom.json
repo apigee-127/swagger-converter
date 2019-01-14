@@ -1,0 +1,25 @@
+{
+  "apiVersion": "1.0.0",
+  "swaggerVersion": "1.2",
+  "basePath": "",
+  "resourcePath": "/custom",
+  "apis": [
+    {
+      "path": "/custom",
+      "operations": [
+        {
+          "method": "GET",
+          "summary": "",
+          "x-custom": 3,
+          "responseMessages": [
+            {
+              "code": 200,
+              "message": "Return all pets"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "models": {}
+}
