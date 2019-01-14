@@ -1,0 +1,28 @@
+{
+  "info": {
+      "title": "Title was not specified",
+      "version": "1.0.0"
+  },
+  "paths": {
+      "/custom": {
+          "get": {
+              "x-custom": 3,
+              "responses": {
+                  "200": {
+                      "description": "Return all pets"
+                  }
+              },
+              "tags": [
+                  "custom"
+              ]
+          }
+      }
+  },
+  "swagger": "2.0",
+  "tags": [
+      {
+          "description": "An API with custom properties",
+          "name": "custom"
+      }
+  ]
+}
