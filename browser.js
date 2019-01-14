@@ -547,12 +547,7 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
   var tags = (operationDefaults.tags || []).concat(oldOperation.tags || []);
   tags = removeDuplicates(tags);
 
-  var customProperties = {};
-  for (var key in oldOperation) {
-    if (/^x-/.test(key)) {
-      customProperties[key] = oldOperation[key];
-    }
-  }
+  var customProperties = getCustomProperties(oldOperation);
 
   return extend({}, operationDefaults, customProperties, {
     operationId: oldOperation.nickname,
@@ -1015,6 +1010,21 @@ function sortBy(array, attr) {
     b = b[attr];
     return (a < b) ? -1 : ((a > b) ? 1 : 0);
   });
+}
+
+/*
+ * Filter object on keys matching the prefix `x-`.
+ * @param object {object} - object to fetch properties from
+ * @returns {object} - object with only properties prefixed with `x-`
+ */
+function getCustomProperties(object) {
+  var result = {};
+  for (var key in object) {
+    if (/^x-/.test(key)) {
+      result[key] = object[key];
+    }
+  }
+  return result;
 }
 
 },{"assert":2,"common-prefix":6,"urijs":10}],2:[function(require,module,exports){
