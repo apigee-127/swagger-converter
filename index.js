@@ -546,7 +546,14 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
   var tags = (operationDefaults.tags || []).concat(oldOperation.tags || []);
   tags = removeDuplicates(tags);
 
-  return extend({}, operationDefaults, {
+  var customProperties = {};
+  for (var key in oldOperation) {
+    if (/^x-/.test(key)) {
+      customProperties[key] = oldOperation[key];
+    }
+  }
+
+  return extend({}, operationDefaults, customProperties, {
     operationId: oldOperation.nickname,
     summary: oldOperation.summary,
     description: oldOperation.description || oldOperation.notes,
