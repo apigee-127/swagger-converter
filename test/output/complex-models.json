@@ -61,6 +61,24 @@
     "version": "v1"
   },
   "paths": {
+    "/projects.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/Project"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      }
+    },
     "/projects/{id}.json": {
       "get": {
         "parameters": [

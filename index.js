@@ -413,9 +413,9 @@ prototype.buildTypeProperties = function (oldType, allowRef) {
     var collection = match[1].toLowerCase();
     var items = match[2];
 
-    //handle "Map[String,<VALUES>]" types
-    //see https://github.com/swagger-api/swagger-core/issues/244
     if (collection === 'map') {
+      //handle "Map[String,<VALUES>]" types
+      //see https://github.com/swagger-api/swagger-core/issues/244
       var commaIndex = items.indexOf(',');
       var keyType = items.slice(0, commaIndex);
       var valueType = items.slice(commaIndex + 1);
@@ -424,6 +424,13 @@ prototype.buildTypeProperties = function (oldType, allowRef) {
           additionalProperties: this.buildTypeProperties(valueType, allowRef),
         };
       }
+    } else if (collection === '') {
+      //handle "[<ITEMS>]" types
+      //see https://github.com/apigee-127/swagger-converter/pull/83
+      return {
+        type: 'array',
+        items: this.buildTypeProperties(items, allowRef),
+      };
     } else {
       type = typeMap[collection];
       if (isValue(type)) {
