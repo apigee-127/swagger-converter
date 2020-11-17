@@ -100,6 +100,11 @@ SwaggerConverter.convert = function(resourceListing, apiDeclarations, options) {
 
   var converter = new Converter();
   converter.options = options || {};
+  if (!['always','fallback','never'].includes(
+    converter.options.generateDefaultResponses)
+  ) {
+    converter.options.generateDefaultResponses = 'always';
+  }
   return converter.convert(resourceListing, apiDeclarations);
 };
 
@@ -568,9 +573,22 @@ prototype.buildOperation = function(oldOperation, operationDefaults) {
  * @returns {object} - Swagger 2.0 response object
 */
 prototype.buildResponses = function(oldOperation) {
-  var responses = {
-    '200': {description: 'No response was specified'}
-  };
+  var responses = {};
+  var generateDefaultResponse =
+    this.options.generateDefaultResponses === 'always' ||
+    (
+      this.options.generateDefaultResponses === 'fallback' &&
+      (
+        !oldOperation.responseMessages ||
+        oldOperation.responseMessages.length === 0
+      )
+    );
+
+  if (generateDefaultResponse) {
+    responses['200'] = {
+      description: 'No response was specified'
+    };
+  }
 
   this.forEach(oldOperation.responseMessages, function(oldResponse) {
     var code = '' + oldResponse.code;
@@ -581,9 +599,11 @@ prototype.buildResponses = function(oldOperation) {
     });
   });
 
-  extend(responses['200'], {
-    schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
-  });
+  if (generateDefaultResponse) {
+    extend(responses['200'], {
+      schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
+    });
+  }
 
   return responses;
 };
