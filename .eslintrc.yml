@@ -1,0 +1,12 @@
+parserOptions:
+  sourceType: module
+  ecmaVersion: 2020
+env:
+  commonjs: true
+reportUnusedDisableDirectives: true
+extends: eslint:recommended
+overrides:
+  - files: 'test/*'
+    env:
+      node: true
+      mocha: true

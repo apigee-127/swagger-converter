@@ -35,9 +35,6 @@ var Immutable = require('seamless-immutable');
 var inputPath = './test/input/';
 var outputPath = './test/output/';
 
-require('mocha-jshint')();
-require('mocha-jscs')();
-
 var inputs = [
   {
     resourceListing: 'minimal/index.json',
