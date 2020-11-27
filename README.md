@@ -67,20 +67,6 @@ console.log(JSON.stringify(apiDeclarations, null, 2));
 */
 ```
 
-##### In browser
-Install via Bower
-```
-bower install --save swagger-converter
-```
-Include the `browser.js` script in your HTML
-```html
-  <script src="/path/to/swagger-converter/browser.js"></script>
-```
-Use the script
-```javascript
-var swagger2Document = SwaggerConverter.convert(resourceListing, apiDeclarations);
-```
-
 ### Options
 
 - `collectionFormat`[string] - assigned to every array parameter.
