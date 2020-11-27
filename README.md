@@ -71,12 +71,6 @@ console.log(JSON.stringify(apiDeclarations, null, 2));
 
 - `collectionFormat`[string] - assigned to every array parameter.
 - `buildTagsFromPaths`[bool] - ignore `resourcePath` and buid tags from resource `path`. Default: false.
-- `generateDefaultResponses`[string] - Add a default 200 response ('No response was specified') to operations. Accepted values:
-  - `always` Default. Add the default response to every operation, which is overwritten if that response is also defined in the source specification.
-  - `fallback` Only add the default response if no other response is defined in the source specification.
-        Produces a [valid specification](https://swagger.io/docs/specification/2-0/describing-responses/) even if the source specification contains operations for which no response is defined.
-  - `never` Never add the default response.
-        Produces an [invalid specification](https://swagger.io/docs/specification/2-0/describing-responses/) if the source specification contains operations for which no response is defined.
 
 ### Development
 
