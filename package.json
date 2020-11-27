@@ -19,6 +19,8 @@
     "url": "https://github.com/apigee-127/swagger-converter.git"
   },
   "keywords": [
+    "OAS",
+    "OpenAPI",
     "Swagger",
     "converter",
     "API"
