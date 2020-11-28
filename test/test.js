@@ -30,8 +30,6 @@ var path = require('path');
 var swaggerConverter = require('..');
 var expect = require('chai').expect;
 var sway = require('sway');
-var sortObject = require('deep-sort-object');
-var Immutable = require('seamless-immutable');
 var inputPath = './test/input/';
 var outputPath = './test/output/';
 
@@ -114,10 +112,9 @@ function testInput(input) {
     apiDeclarations[key] = JSON.parse(apiDeclarationFile);
   }
 
-  // Make resourceListing and apiDeclarations Immutable to make sure API is
-  // working without touching the input objects
-  resourceListing = new Immutable(resourceListing);
-  apiDeclarations = new Immutable(apiDeclarations);
+  // Deep freeze resourceListing and apiDeclarations to make sure API is working without touching the input objects
+  resourceListing = deepFreeze(resourceListing);
+  apiDeclarations = deepFreeze(apiDeclarations);
 
   // Do the conversion
   var converted = swaggerConverter.convert(resourceListing, apiDeclarations,
@@ -257,4 +254,36 @@ function testListApiDeclarations() {
       });
     });
   });
+}
+
+function sortObject(src) {
+  var out;
+
+  if (Array.isArray(src)) {
+    return src.map(sortObject);
+  }
+
+  if (src != null && typeof src === 'object') {
+    out = {};
+
+    Object.keys(src).sort().forEach(function (key) {
+      out[key] = sortObject(src[key]);
+    });
+
+    return out;
+  }
+
+  return src;
+}
+
+function deepFreeze(o) {
+  if (o != null && typeof o === 'object') {
+    Object.freeze(o);
+
+    Object.keys(o).forEach(function (prop) {
+      deepFreeze(o[prop]);
+    });
+  }
+
+  return o;
 }
