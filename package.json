@@ -37,7 +37,6 @@
     "sway": "2.0.6"
   },
   "dependencies": {
-    "common-prefix": "^1.1.0",
     "urijs": "^1.16.1"
   }
 }
