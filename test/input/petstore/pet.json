@@ -68,11 +68,7 @@
               "type": "string",
               "paramType": "query",
               "allowMultiple": true,
-              "enum": [
-                "available",
-                "pending",
-                "sold"
-              ]
+              "enum": ["available", "pending", "sold"]
             }
           ],
           "responseMessages": [
@@ -126,9 +122,7 @@
           "notes": "",
           "type": "void",
           "nickname": "updatePetWithForm",
-          "consumes": [
-            "application/x-www-form-urlencoded"
-          ],
+          "consumes": ["application/x-www-form-urlencoded"],
           "authorizations": {
             "oauth2": [
               {
@@ -242,14 +236,8 @@
             "$ref": "Pet"
           },
           "nickname": "partialUpdate",
-          "produces": [
-            "application/json",
-            "application/xml"
-          ],
-          "consumes": [
-            "application/json",
-            "application/xml"
-          ],
+          "produces": ["application/json", "application/xml"],
+          "consumes": ["application/json", "application/xml"],
           "authorizations": {
             "oauth2": [
               {
@@ -294,9 +282,7 @@
           "notes": "",
           "type": "void",
           "nickname": "uploadFile",
-          "consumes": [
-            "multipart/form-data"
-          ],
+          "consumes": ["multipart/form-data"],
           "authorizations": {
             "oauth2": [
               {
@@ -346,10 +332,7 @@
     },
     "Pet": {
       "id": "Pet",
-      "required": [
-        "id",
-        "name"
-      ],
+      "required": ["id", "name"],
       "properties": {
         "id": {
           "type": "integer",
@@ -380,11 +363,7 @@
         "status": {
           "type": "string",
           "description": "pet status in the store",
-          "enum": [
-            "available",
-            "pending",
-            "sold"
-          ]
+          "enum": ["available", "pending", "sold"]
         }
       }
     },
@@ -402,10 +381,7 @@
     },
     "Animal": {
       "id": "Animal",
-      "required": [
-        "id",
-        "type"
-      ],
+      "required": ["id", "type"],
       "properties": {
         "id": {
           "type": "integer"
@@ -419,13 +395,11 @@
     },
     "Cat": {
       "id": "Cat",
-        "required": [
-          "likesMilk"
-        ],
-        "properties": {
-          "likesMilk": {
-            "type": "boolean"
-          }
+      "required": ["likesMilk"],
+      "properties": {
+        "likesMilk": {
+          "type": "boolean"
+        }
       }
     }
   }

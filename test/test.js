@@ -38,60 +38,60 @@ var inputs = [
     resourceListing: 'minimal/index.json',
     apiDeclarations: {
       '/pets': 'minimal/pets.json',
-      '/stores': 'minimal/stores.json'
+      '/stores': 'minimal/stores.json',
     },
-    output: 'minimal.json'
+    output: 'minimal.json',
   },
   {
     resourceListing: 'embedded/index.json',
     apiDeclarations: {},
-    output: 'embedded.json'
+    output: 'embedded.json',
   },
   {
     resourceListing: 'petstore/index.json',
     apiDeclarations: {
       '/pet': 'petstore/pet.json',
       '/user': 'petstore/user.json',
-      '/store': 'petstore/store.json'
+      '/store': 'petstore/store.json',
     },
     // TODO: petstore example output is not perfect output. Update the output
-    output: 'petstore.json'
+    output: 'petstore.json',
   },
   {
     resourceListing: 'complex-parameters/index.json',
     apiDeclarations: {},
-    output: 'complex-parameters.json'
+    output: 'complex-parameters.json',
   },
   {
     resourceListing: 'complex-parameters/index.json',
     apiDeclarations: {},
     options: {
-      collectionFormat: 'multi'
+      collectionFormat: 'multi',
     },
-    output: 'complex-parameters-multi.json'
+    output: 'complex-parameters-multi.json',
   },
   {
     resourceListing: 'fixable/index.json',
     apiDeclarations: {
       '/swagger_files/my/pets': 'fixable/pets.json',
-      '/swagger_files/our/stores': 'fixable/stores.json'
+      '/swagger_files/our/stores': 'fixable/stores.json',
     },
-    output: 'fixable.json'
+    output: 'fixable.json',
   },
   {
     resourceListing: 'complex-models/index.json',
     apiDeclarations: {
-      '/projects': 'complex-models/projects.json'
+      '/projects': 'complex-models/projects.json',
     },
-    output: 'complex-models.json'
+    output: 'complex-models.json',
   },
   {
     resourceListing: 'custom/index.json',
     apiDeclarations: {
-      '/custom': 'custom/custom.json'
+      '/custom': 'custom/custom.json',
     },
-    output: 'custom.json'
-  }
+    output: 'custom.json',
+  },
 ];
 
 // Run testInput for each input folder
@@ -117,79 +117,80 @@ function testInput(input) {
   apiDeclarations = deepFreeze(apiDeclarations);
 
   // Do the conversion
-  var converted = swaggerConverter.convert(resourceListing, apiDeclarations,
-    input.options);
+  var converted = swaggerConverter.convert(
+    resourceListing,
+    apiDeclarations,
+    input.options,
+  );
 
-  describe('converting file: ' + input.resourceListing, function() {
-    describe('output', function() {
-
-      it('should be an object', function() {
+  describe('converting file: ' + input.resourceListing, function () {
+    describe('output', function () {
+      it('should be an object', function () {
         expect(converted).is.a('object');
       });
 
-      it('should have info property and required properties', function() {
+      it('should have info property and required properties', function () {
         expect(converted).to.have.property('info').that.is.a('object');
         expect(converted.info).to.have.property('title').that.is.a('string');
       });
 
-      it('should have paths property that is an object', function() {
+      it('should have paths property that is an object', function () {
         expect(converted).to.have.property('paths').that.is.a('object');
       });
 
-      it('should generate valid Swagger 2.0 document', function() {
-        return sway.create({definition: converted})
-          .then(function(swaggerObj) {
-
+      it('should generate valid Swagger 2.0 document', function () {
+        return sway
+          .create({ definition: converted })
+          .then(function (swaggerObj) {
             var result = swaggerObj.validate();
 
             expect(result.errors).to.deep.equal([]);
-            expect(result.warnings.filter(function(warning) {
-
-              // FIXME: fix Petstore input and output files
-              // Petstore has two unused definitions. We forgive this warning
-              // because of that example
-              return warning.code !== 'UNUSED_DEFINITION';
-            })).to.deep.equal([]);
+            expect(
+              result.warnings.filter(function (warning) {
+                // FIXME: fix Petstore input and output files
+                // Petstore has two unused definitions. We forgive this warning
+                // because of that example
+                return warning.code !== 'UNUSED_DEFINITION';
+              }),
+            ).to.deep.equal([]);
           });
       });
 
       if (process.env.WRITE_CONVERTED) {
         var fileContent = JSON.stringify(sortObject(converted), null, 4) + '\n';
         fs.writeFileSync(outputFilePath, fileContent);
-      }
-      else {
-        it('should produce the same output as output file', function() {
+      } else {
+        it('should produce the same output as output file', function () {
           var outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
           expect(converted).to.deep.equal(outputFile);
         });
       }
     });
   });
-
 }
 
 function testListApiDeclarations() {
-  describe('testing listApiDeclarations function', function() {
+  describe('testing listApiDeclarations function', function () {
     var resourceListing;
     var sourceUrl;
 
-    beforeEach(function() {
+    beforeEach(function () {
       resourceListing = {
-        'swaggerVersion': '1.2',
-        'apis': [
+        swaggerVersion: '1.2',
+        apis: [
           {
-            'path': '/pet',
-            'description': 'Operations about pets'
+            path: '/pet',
+            description: 'Operations about pets',
           },
           {
-            'path': '/user',
-            'description': 'Operations about user'
+            path: '/user',
+            description: 'Operations about user',
           },
           {
-            'path': '/store',
-            'description': 'Operations about store'
-          }
-        ]
+            path: '/store',
+            description: 'Operations about store',
+          },
+        ],
       };
       sourceUrl = 'http://test.com/api-docs.json';
     });
@@ -198,51 +199,51 @@ function testListApiDeclarations() {
       return swaggerConverter.listApiDeclarations(sourceUrl, resourceListing);
     }
 
-    it('simple case', function() {
+    it('simple case', function () {
       expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://test.com/api-docs.json/pet',
         '/user': 'http://test.com/api-docs.json/user',
-        '/store': 'http://test.com/api-docs.json/store'
+        '/store': 'http://test.com/api-docs.json/store',
       });
     });
 
-    it('embedded document', function() {
-      resourceListing.apis.forEach(function(api) {
-        api.operations = {method: 'GET'};
+    it('embedded document', function () {
+      resourceListing.apis.forEach(function (api) {
+        api.operations = { method: 'GET' };
       });
       expect(listApiDeclarations()).to.deep.equal({});
     });
 
-    it('version 1.0', function() {
+    it('version 1.0', function () {
       resourceListing.swaggerVersion = '1.0';
       expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://test.com/pet',
         '/user': 'http://test.com/user',
-        '/store': 'http://test.com/store'
+        '/store': 'http://test.com/store',
       });
     });
 
-    it('absolute paths', function() {
-      resourceListing.apis.forEach(function(api) {
+    it('absolute paths', function () {
+      resourceListing.apis.forEach(function (api) {
         api.path = 'http://foo.com' + api.path;
       });
       expect(listApiDeclarations()).to.deep.equal({
         'http://foo.com/pet': 'http://foo.com/pet',
         'http://foo.com/user': 'http://foo.com/user',
-        'http://foo.com/store': 'http://foo.com/store'
+        'http://foo.com/store': 'http://foo.com/store',
       });
     });
 
-    it('basePath inside resourceListing', function() {
+    it('basePath inside resourceListing', function () {
       resourceListing.basePath = 'http://bar.com';
       expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://bar.com/pet',
         '/user': 'http://bar.com/user',
-        '/store': 'http://bar.com/store'
+        '/store': 'http://bar.com/store',
       });
     });
 
-    it('URL with query parameter', function() {
+    it('URL with query parameter', function () {
       //Disclaimer: This weird test doesn't produced by author's sick fantasy
       //on a contrary it's taken from public Swagger spec and properly
       //handled by 'SwaggerUI'.
@@ -250,7 +251,7 @@ function testListApiDeclarations() {
       expect(listApiDeclarations()).to.deep.equal({
         '/pet': 'http://bar.com/?spec=%2Fpet',
         '/user': 'http://bar.com/?spec=%2Fuser',
-        '/store': 'http://bar.com/?spec=%2Fstore'
+        '/store': 'http://bar.com/?spec=%2Fstore',
       });
     });
   });
@@ -266,9 +267,11 @@ function sortObject(src) {
   if (src != null && typeof src === 'object') {
     out = {};
 
-    Object.keys(src).sort().forEach(function (key) {
-      out[key] = sortObject(src[key]);
-    });
+    Object.keys(src)
+      .sort()
+      .forEach(function (key) {
+        out[key] = sortObject(src[key]);
+      });
 
     return out;
   }

@@ -11,6 +11,7 @@
 > Converts [Swagger](http://swagger.io/) documents from version **`1.x`** to version **`2.0`**
 
 ### Installation
+
 Use npm
 
 ```shell
@@ -22,11 +23,12 @@ npm install swagger-converter --save
 It's recommended to use command line tools like [**`swagger-tools`**][swagger-tools-npm] or [**`swagger-spec-converter`**][swagger-spec-converter] for converting your spec. This module will not handle validation and if your spec is not valid can produce invalid spec.
 
 ##### convert function
+
 `convert` accept accept following arguments:
 
-* `resourceListing`(required) is Swagger 1.x entry point file.
-* `apiDeclarations`(required) is a map with paths from `resourceListing` as keys and resources as values
-* `options`(optional) - See [options](#options) for the full list of options
+- `resourceListing`(required) is Swagger 1.x entry point file.
+- `apiDeclarations`(required) is a map with paths from `resourceListing` as keys and resources as values
+- `options`(optional) - See [options](#options) for the full list of options
 
 ```javascript
 var swaggerConverter = require('swagger-converter');
@@ -36,26 +38,33 @@ var resourceListing = require('/path/to/petstore/index.json');
 var apiDeclarations = {
   '/pet': require('/path/to/petstore/pet.json'),
   '/user': require('/path/to/petstore/user.json'),
-  '/store': require('/path/to/petstore/store.json')
+  '/store': require('/path/to/petstore/store.json'),
 };
 
-var swagger2Document = swaggerConverter.convert(resourceListing, apiDeclarations);
+var swagger2Document = swaggerConverter.convert(
+  resourceListing,
+  apiDeclarations,
+);
 
 console.log(JSON.stringify(swagger2Document, null, 2));
 ```
 
 ##### listApiDeclarations function
+
 `listApiDeclarations` function accept following arguments:
 
-* `sourceUrl`(required)       - source URL for root Swagger 1.x document
-* `resourceListing`(required) - root Swagger 1.x document
+- `sourceUrl`(required) - source URL for root Swagger 1.x document
+- `resourceListing`(required) - root Swagger 1.x document
 
 ```javascript
 var swaggerConverter = require('swagger-converter');
 
 var resourceListing = require('/path/to/petstore/index.json');
 
-var apiDeclarations = swaggerConverter.listApiDeclarations('http://test.com/api-docs', resourceListing);
+var apiDeclarations = swaggerConverter.listApiDeclarations(
+  'http://test.com/api-docs',
+  resourceListing,
+);
 
 console.log(JSON.stringify(apiDeclarations, null, 2));
 /*
@@ -77,12 +86,15 @@ console.log(JSON.stringify(apiDeclarations, null, 2));
 Install dependencies with `npm install` command and use `npm test` to run the test. Tests will fail if you break coding style.
 
 ##### Building for browser
+
 Just run this command to make a new `browser.js`
 
 ```
 npm run build
 ```
+
 ### License
+
 MIT. See [LICENSE](./LICENSE)
 
 [npm-image]: https://img.shields.io/npm/v/swagger-converter.svg?style=flat
