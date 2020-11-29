@@ -124,47 +124,43 @@ function testInput(input) {
   );
 
   describe('converting file: ' + input.resourceListing, function () {
-    describe('output', function () {
-      it('should be an object', function () {
-        expect(converted).is.a('object');
+    it('output should be an object', function () {
+      expect(converted).is.a('object');
+    });
+
+    it('output should have info property and required properties', function () {
+      expect(converted).to.have.property('info').that.is.a('object');
+      expect(converted.info).to.have.property('title').that.is.a('string');
+    });
+
+    it('output should have paths property that is an object', function () {
+      expect(converted).to.have.property('paths').that.is.a('object');
+    });
+
+    it('output should generate valid Swagger 2.0 document', function () {
+      return sway.create({ definition: converted }).then(function (swaggerObj) {
+        var result = swaggerObj.validate();
+
+        expect(result.errors).to.deep.equal([]);
+        expect(
+          result.warnings.filter(function (warning) {
+            // FIXME: fix Petstore input and output files
+            // Petstore has two unused definitions. We forgive this warning
+            // because of that example
+            return warning.code !== 'UNUSED_DEFINITION';
+          }),
+        ).to.deep.equal([]);
       });
+    });
 
-      it('should have info property and required properties', function () {
-        expect(converted).to.have.property('info').that.is.a('object');
-        expect(converted.info).to.have.property('title').that.is.a('string');
-      });
+    if (process.env.WRITE_CONVERTED) {
+      var fileContent = JSON.stringify(sortObject(converted), null, 4) + '\n';
+      fs.writeFileSync(outputFilePath, fileContent);
+    }
 
-      it('should have paths property that is an object', function () {
-        expect(converted).to.have.property('paths').that.is.a('object');
-      });
-
-      it('should generate valid Swagger 2.0 document', function () {
-        return sway
-          .create({ definition: converted })
-          .then(function (swaggerObj) {
-            var result = swaggerObj.validate();
-
-            expect(result.errors).to.deep.equal([]);
-            expect(
-              result.warnings.filter(function (warning) {
-                // FIXME: fix Petstore input and output files
-                // Petstore has two unused definitions. We forgive this warning
-                // because of that example
-                return warning.code !== 'UNUSED_DEFINITION';
-              }),
-            ).to.deep.equal([]);
-          });
-      });
-
-      if (process.env.WRITE_CONVERTED) {
-        var fileContent = JSON.stringify(sortObject(converted), null, 4) + '\n';
-        fs.writeFileSync(outputFilePath, fileContent);
-      } else {
-        it('should produce the same output as output file', function () {
-          var outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
-          expect(converted).to.deep.equal(outputFile);
-        });
-      }
+    it('output should produce the same output as output file', function () {
+      var outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
+      expect(converted).to.deep.equal(outputFile);
     });
   });
 }
