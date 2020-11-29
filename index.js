@@ -27,7 +27,10 @@
 var assert = require('assert');
 var URI = require('urijs');
 
-var SwaggerConverter = (module.exports = {});
+module.exports = {
+  convert: convert,
+  listApiDeclarations: listApiDeclarations,
+};
 
 /**
  * Swagger Converter Error
@@ -46,7 +49,7 @@ SwaggerConverterError.prototype.name = 'SwaggerConverterError';
  * @param resourceListing {object} - root Swagger 1.x document
  * @returns {object} - map of apiDeclarations paths to absolute URLs
  */
-SwaggerConverter.listApiDeclarations = function (sourceUrl, resourceListing) {
+function listApiDeclarations(sourceUrl, resourceListing) {
   /*
    * Warning: This code is intended to cover us much as possible real-life
    * cases and was tested using hundreds of public Swagger documents. If you
@@ -80,7 +83,7 @@ SwaggerConverter.listApiDeclarations = function (sourceUrl, resourceListing) {
   });
 
   return result;
-};
+}
 
 /*
  * Converts Swagger 1.x specs file to Swagger 2.0 specs.
@@ -90,11 +93,7 @@ SwaggerConverter.listApiDeclarations = function (sourceUrl, resourceListing) {
  * @param options {object} - additonal options
  * @returns {object} - Fully converted Swagger 2.0 document
  */
-SwaggerConverter.convert = function (
-  resourceListing,
-  apiDeclarations,
-  options,
-) {
+function convert(resourceListing, apiDeclarations, options) {
   if (Array.isArray(apiDeclarations)) {
     throw new SwaggerConverterError(
       'Second argument(apiDeclarations) should be plain object, ' +
@@ -105,7 +104,7 @@ SwaggerConverter.convert = function (
   var converter = new Converter();
   converter.options = options || {};
   return converter.convert(resourceListing, apiDeclarations);
-};
+}
 
 var Converter = function () {};
 var prototype = Converter.prototype;
