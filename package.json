@@ -4,10 +4,10 @@
   "description": "Converts Swagger documents from version 1.x to version 2.0",
   "main": "index.js",
   "scripts": {
-    "test": "npm run lint && npm run testonly && npm run prettier:check",
+    "test": "npm run lint && npm run testonly:cover && npm run prettier:check",
     "lint": "eslint .",
-    "testonly": "nyc mocha",
-    "coveralls": "cat ./coverage/lcov.info | coveralls",
+    "testonly": "mocha",
+    "testonly:cover": "nyc npm run testonly",
     "prettier": "prettier --ignore-path .gitignore --write --list-different .",
     "prettier:check": "prettier --ignore-path .gitignore --check ."
   },
@@ -30,7 +30,6 @@
   "homepage": "https://github.com/apigee-127/swagger-converter",
   "devDependencies": {
     "chai": "^4.1.2",
-    "coveralls": "^3.0.1",
     "eslint": "^7.14.0",
     "mocha": "^5.1.1",
     "nyc": "^15.1.0",
