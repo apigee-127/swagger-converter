@@ -1,7 +1,7 @@
 sudo: false
 language: node_js
 script:
-- npm run istanbul
+- npm test
 after_success:
 - npm run coveralls
 node_js:
