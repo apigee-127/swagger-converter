@@ -3,9 +3,7 @@
   "swaggerVersion": "1.2",
   "basePath": "http://petstore.swagger.wordnik.com/api",
   "resourcePath": "/store",
-  "produces": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
   "apis": [
     {
       "path": "/store/order",
@@ -131,11 +129,7 @@
         "status": {
           "type": "string",
           "description": "Order Status",
-          "enum": [
-            "placed",
-            " approved",
-            " delivered"
-          ]
+          "enum": ["placed", " approved", " delivered"]
         },
         "shipDate": {
           "type": "string",

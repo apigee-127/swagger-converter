@@ -1,26 +1,22 @@
 {
-    "basePath": "/petstore-api",
-    "host": "petstore.example.com",
-    "info": {
-        "title": "Embedded",
-        "version": "1.0.0"
-    },
-    "paths": {
-        "/pets": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Return all pets"
-                    }
-                },
-                "tags": [
-                    "pets"
-                ]
-            }
-        }
-    },
-    "schemes": [
-        "https"
-    ],
-    "swagger": "2.0"
+  "basePath": "/petstore-api",
+  "host": "petstore.example.com",
+  "info": {
+    "title": "Embedded",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/pets": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Return all pets"
+          }
+        },
+        "tags": ["pets"]
+      }
+    }
+  },
+  "schemes": ["https"],
+  "swagger": "2.0"
 }

@@ -3,9 +3,7 @@
   "swaggerVersion": "1.2",
   "basePath": "http://petstore.swagger.wordnik.com/api",
   "resourcePath": "/user",
-  "produces": [
-    "application/json"
-  ],
+  "produces": ["application/json"],
   "apis": [
     {
       "path": "/user/createWithArray",
@@ -297,11 +295,7 @@
           "type": "integer",
           "format": "int32",
           "description": "User Status",
-          "enum": [
-            "1-registered",
-            "2-active",
-            "3-closed"
-          ]
+          "enum": ["1-registered", "2-active", "3-closed"]
         }
       }
     }
