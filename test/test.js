@@ -167,36 +167,16 @@ function testInput(input) {
 
 function testListApiDeclarations() {
   describe('testing listApiDeclarations function', function () {
-    var resourceListing;
-    var sourceUrl;
-
-    beforeEach(function () {
-      resourceListing = {
-        swaggerVersion: '1.2',
-        apis: [
-          {
-            path: '/pet',
-            description: 'Operations about pets',
-          },
-          {
-            path: '/user',
-            description: 'Operations about user',
-          },
-          {
-            path: '/store',
-            description: 'Operations about store',
-          },
-        ],
-      };
-      sourceUrl = 'http://test.com/api-docs.json';
-    });
-
-    function listApiDeclarations() {
-      return swaggerConverter.listApiDeclarations(sourceUrl, resourceListing);
-    }
-
     it('simple case', function () {
-      expect(listApiDeclarations()).to.deep.equal({
+      var declarations = swaggerConverter.listApiDeclarations(
+        'http://test.com/api-docs.json',
+        {
+          swaggerVersion: '1.2',
+          apis: [{ path: '/pet' }, { path: '/user' }, { path: '/store' }],
+        },
+      );
+
+      expect(declarations).to.deep.equal({
         '/pet': 'http://test.com/api-docs.json/pet',
         '/user': 'http://test.com/api-docs.json/user',
         '/store': 'http://test.com/api-docs.json/store',
@@ -204,15 +184,31 @@ function testListApiDeclarations() {
     });
 
     it('embedded document', function () {
-      resourceListing.apis.forEach(function (api) {
-        api.operations = { method: 'GET' };
-      });
-      expect(listApiDeclarations()).to.deep.equal({});
+      var declarations = swaggerConverter.listApiDeclarations(
+        'http://test.com/api-docs.json',
+        {
+          swaggerVersion: '1.2',
+          apis: [
+            { path: '/pet', operations: { method: 'GET' } },
+            { path: '/user', operations: { method: 'GET' } },
+            { path: '/store', operations: { method: 'GET' } },
+          ],
+        },
+      );
+
+      expect(declarations).to.deep.equal({});
     });
 
     it('version 1.0', function () {
-      resourceListing.swaggerVersion = '1.0';
-      expect(listApiDeclarations()).to.deep.equal({
+      var declarations = swaggerConverter.listApiDeclarations(
+        'http://test.com/api-docs.json',
+        {
+          swaggerVersion: '1.0',
+          apis: [{ path: '/pet' }, { path: '/user' }, { path: '/store' }],
+        },
+      );
+
+      expect(declarations).to.deep.equal({
         '/pet': 'http://test.com/pet',
         '/user': 'http://test.com/user',
         '/store': 'http://test.com/store',
@@ -220,10 +216,19 @@ function testListApiDeclarations() {
     });
 
     it('absolute paths', function () {
-      resourceListing.apis.forEach(function (api) {
-        api.path = 'http://foo.com' + api.path;
-      });
-      expect(listApiDeclarations()).to.deep.equal({
+      var declarations = swaggerConverter.listApiDeclarations(
+        'http://test.com/api-docs.json',
+        {
+          swaggerVersion: '1.2',
+          apis: [
+            { path: 'http://foo.com/pet' },
+            { path: 'http://foo.com/user' },
+            { path: 'http://foo.com/store' },
+          ],
+        },
+      );
+
+      expect(declarations).to.deep.equal({
         'http://foo.com/pet': 'http://foo.com/pet',
         'http://foo.com/user': 'http://foo.com/user',
         'http://foo.com/store': 'http://foo.com/store',
@@ -231,8 +236,16 @@ function testListApiDeclarations() {
     });
 
     it('basePath inside resourceListing', function () {
-      resourceListing.basePath = 'http://bar.com';
-      expect(listApiDeclarations()).to.deep.equal({
+      var declarations = swaggerConverter.listApiDeclarations(
+        'http://test.com/api-docs.json',
+        {
+          swaggerVersion: '1.2',
+          basePath: 'http://bar.com',
+          apis: [{ path: '/pet' }, { path: '/user' }, { path: '/store' }],
+        },
+      );
+
+      expect(declarations).to.deep.equal({
         '/pet': 'http://bar.com/pet',
         '/user': 'http://bar.com/user',
         '/store': 'http://bar.com/store',
@@ -243,8 +256,16 @@ function testListApiDeclarations() {
       //Disclaimer: This weird test doesn't produced by author's sick fantasy
       //on a contrary it's taken from public Swagger spec and properly
       //handled by 'SwaggerUI'.
-      resourceListing.basePath = 'http://bar.com?spec=';
-      expect(listApiDeclarations()).to.deep.equal({
+      var declarations = swaggerConverter.listApiDeclarations(
+        'http://test.com/api-docs.json',
+        {
+          swaggerVersion: '1.2',
+          basePath: 'http://bar.com?spec=',
+          apis: [{ path: '/pet' }, { path: '/user' }, { path: '/store' }],
+        },
+      );
+
+      expect(declarations).to.deep.equal({
         '/pet': 'http://bar.com/?spec=%2Fpet',
         '/user': 'http://bar.com/?spec=%2Fuser',
         '/store': 'http://bar.com/?spec=%2Fstore',
