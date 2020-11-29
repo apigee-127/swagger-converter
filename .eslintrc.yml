@@ -9,4 +9,21 @@ overrides:
   - files: 'test/*'
     env:
       node: true
-      mocha: true
+    rules:
+      arrow-body-style: error
+      constructor-super: error
+      no-class-assign: error
+      no-const-assign: error
+      no-dupe-class-members: error
+      no-this-before-super: error
+      no-useless-computed-key: error
+      no-useless-constructor: error
+      no-useless-rename: error
+      no-var: error
+      object-shorthand: error
+      prefer-arrow-callback: error
+      prefer-const: error
+      prefer-numeric-literals: error
+      prefer-rest-params: error
+      prefer-spread: error
+      require-yield: error

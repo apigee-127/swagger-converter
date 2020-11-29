@@ -25,15 +25,19 @@
 
 'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var swaggerConverter = require('..');
-var expect = require('chai').expect;
-var sway = require('sway');
-var inputPath = './test/input/';
-var outputPath = './test/output/';
+const fs = require('fs');
+const path = require('path');
 
-var inputs = [
+const sway = require('sway');
+const { expect } = require('chai');
+const { describe, it } = require('mocha');
+
+const { convert, listApiDeclarations } = require('..');
+
+const inputPath = './test/input/';
+const outputPath = './test/output/';
+
+const inputs = [
   {
     resourceListing: 'minimal/index.json',
     apiDeclarations: {
@@ -65,9 +69,7 @@ var inputs = [
   {
     resourceListing: 'complex-parameters/index.json',
     apiDeclarations: {},
-    options: {
-      collectionFormat: 'multi',
-    },
+    options: { collectionFormat: 'multi' },
     output: 'complex-parameters-multi.json',
   },
   {
@@ -99,16 +101,16 @@ inputs.forEach(testInput);
 testListApiDeclarations();
 
 function testInput(input) {
-  var outputFilePath = path.join(outputPath, input.output);
-  var resourceListingPath = path.join(inputPath, input.resourceListing);
-  var resourceListingFile = fs.readFileSync(resourceListingPath).toString();
-  var resourceListing = JSON.parse(resourceListingFile);
-  var apiDeclarations = {};
+  const outputFilePath = path.join(outputPath, input.output);
+  const resourceListingPath = path.join(inputPath, input.resourceListing);
+  const resourceListingFile = fs.readFileSync(resourceListingPath).toString();
+  let resourceListing = JSON.parse(resourceListingFile);
+  let apiDeclarations = {};
 
-  for (var key in input.apiDeclarations) {
-    var apiDeclaration = input.apiDeclarations[key];
-    var apiDeclarationPath = path.join(inputPath, apiDeclaration);
-    var apiDeclarationFile = fs.readFileSync(apiDeclarationPath).toString();
+  for (const key in input.apiDeclarations) {
+    const apiDeclaration = input.apiDeclarations[key];
+    const apiDeclarationPath = path.join(inputPath, apiDeclaration);
+    const apiDeclarationFile = fs.readFileSync(apiDeclarationPath).toString();
     apiDeclarations[key] = JSON.parse(apiDeclarationFile);
   }
 
@@ -117,58 +119,43 @@ function testInput(input) {
   apiDeclarations = deepFreeze(apiDeclarations);
 
   // Do the conversion
-  var converted = swaggerConverter.convert(
-    resourceListing,
-    apiDeclarations,
-    input.options,
-  );
+  const converted = convert(resourceListing, apiDeclarations, input.options);
 
-  describe('converting file: ' + input.resourceListing, function () {
-    it('output should be an object', function () {
+  describe('converting file: ' + input.resourceListing, () => {
+    it('output should generate valid Swagger 2.0 document', async () => {
       expect(converted).is.a('object');
-    });
-
-    it('output should have info property and required properties', function () {
       expect(converted).to.have.property('info').that.is.a('object');
       expect(converted.info).to.have.property('title').that.is.a('string');
-    });
-
-    it('output should have paths property that is an object', function () {
       expect(converted).to.have.property('paths').that.is.a('object');
-    });
 
-    it('output should generate valid Swagger 2.0 document', function () {
-      return sway.create({ definition: converted }).then(function (swaggerObj) {
-        var result = swaggerObj.validate();
+      const result = (await sway.create({ definition: converted })).validate();
 
-        expect(result.errors).to.deep.equal([]);
-        expect(
-          result.warnings.filter(function (warning) {
-            // FIXME: fix Petstore input and output files
-            // Petstore has two unused definitions. We forgive this warning
-            // because of that example
-            return warning.code !== 'UNUSED_DEFINITION';
-          }),
-        ).to.deep.equal([]);
-      });
+      expect(result.errors).to.deep.equal([]);
+      expect(
+        result.warnings.filter(
+          // FIXME: fix Petstore input and output files
+          // Petstore has two unused definitions. We forgive this warning because of that example
+          (warning) => warning.code !== 'UNUSED_DEFINITION',
+        ),
+      ).to.deep.equal([]);
     });
 
     if (process.env.WRITE_CONVERTED) {
-      var fileContent = JSON.stringify(sortObject(converted), null, 4) + '\n';
+      const fileContent = JSON.stringify(sortObject(converted), null, 2) + '\n';
       fs.writeFileSync(outputFilePath, fileContent);
     }
 
-    it('output should produce the same output as output file', function () {
-      var outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
+    it('output should produce the same output as output file', () => {
+      const outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
       expect(converted).to.deep.equal(outputFile);
     });
   });
 }
 
 function testListApiDeclarations() {
-  describe('testing listApiDeclarations function', function () {
-    it('simple case', function () {
-      var declarations = swaggerConverter.listApiDeclarations(
+  describe('testing listApiDeclarations function', () => {
+    it('simple case', () => {
+      const declarations = listApiDeclarations(
         'http://test.com/api-docs.json',
         {
           swaggerVersion: '1.2',
@@ -183,8 +170,8 @@ function testListApiDeclarations() {
       });
     });
 
-    it('embedded document', function () {
-      var declarations = swaggerConverter.listApiDeclarations(
+    it('embedded document', () => {
+      const declarations = listApiDeclarations(
         'http://test.com/api-docs.json',
         {
           swaggerVersion: '1.2',
@@ -199,8 +186,8 @@ function testListApiDeclarations() {
       expect(declarations).to.deep.equal({});
     });
 
-    it('version 1.0', function () {
-      var declarations = swaggerConverter.listApiDeclarations(
+    it('version 1.0', () => {
+      const declarations = listApiDeclarations(
         'http://test.com/api-docs.json',
         {
           swaggerVersion: '1.0',
@@ -215,8 +202,8 @@ function testListApiDeclarations() {
       });
     });
 
-    it('absolute paths', function () {
-      var declarations = swaggerConverter.listApiDeclarations(
+    it('absolute paths', () => {
+      const declarations = listApiDeclarations(
         'http://test.com/api-docs.json',
         {
           swaggerVersion: '1.2',
@@ -235,8 +222,8 @@ function testListApiDeclarations() {
       });
     });
 
-    it('basePath inside resourceListing', function () {
-      var declarations = swaggerConverter.listApiDeclarations(
+    it('basePath inside resourceListing', () => {
+      const declarations = listApiDeclarations(
         'http://test.com/api-docs.json',
         {
           swaggerVersion: '1.2',
@@ -252,11 +239,11 @@ function testListApiDeclarations() {
       });
     });
 
-    it('URL with query parameter', function () {
+    it('URL with query parameter', () => {
       //Disclaimer: This weird test doesn't produced by author's sick fantasy
       //on a contrary it's taken from public Swagger spec and properly
       //handled by 'SwaggerUI'.
-      var declarations = swaggerConverter.listApiDeclarations(
+      const declarations = listApiDeclarations(
         'http://test.com/api-docs.json',
         {
           swaggerVersion: '1.2',
@@ -275,35 +262,27 @@ function testListApiDeclarations() {
 }
 
 function sortObject(src) {
-  var out;
-
   if (Array.isArray(src)) {
     return src.map(sortObject);
   }
 
   if (src != null && typeof src === 'object') {
-    out = {};
+    const out = {};
 
-    Object.keys(src)
-      .sort()
-      .forEach(function (key) {
-        out[key] = sortObject(src[key]);
-      });
-
+    for (const key of Object.keys(src).sort()) {
+      out[key] = sortObject(src[key]);
+    }
     return out;
   }
 
   return src;
 }
 
-function deepFreeze(o) {
-  if (o != null && typeof o === 'object') {
-    Object.freeze(o);
-
-    Object.keys(o).forEach(function (prop) {
-      deepFreeze(o[prop]);
-    });
+function deepFreeze(value) {
+  if (value != null && typeof value === 'object') {
+    Object.freeze(value);
+    Object.values(value).forEach(deepFreeze);
   }
 
-  return o;
+  return value;
 }
