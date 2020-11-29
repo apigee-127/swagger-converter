@@ -29,12 +29,12 @@
   },
   "homepage": "https://github.com/apigee-127/swagger-converter",
   "devDependencies": {
-    "chai": "^4.1.2",
-    "eslint": "^7.14.0",
-    "mocha": "^5.1.1",
-    "nyc": "^15.1.0",
-    "prettier": "^2.2.1",
-    "sway": "^1.0.0"
+    "chai": "4.1.2",
+    "eslint": "7.14.0",
+    "mocha": "8.2.1",
+    "nyc": "15.1.0",
+    "prettier": "2.2.1",
+    "sway": "2.0.6"
   },
   "dependencies": {
     "common-prefix": "^1.1.0",
