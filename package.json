@@ -6,8 +6,7 @@
   "scripts": {
     "test": "npm run lint && npm run testonly",
     "lint": "eslint .",
-    "testonly": "mocha",
-    "istanbul": "istanbul cover --report lcovonly _mocha",
+    "testonly": "nyc mocha",
     "coveralls": "cat ./coverage/lcov.info | coveralls"
   },
   "repository": {
@@ -31,8 +30,8 @@
     "chai": "^4.1.2",
     "coveralls": "^3.0.1",
     "eslint": "^7.14.0",
-    "istanbul": "^0.4.0",
     "mocha": "^5.1.1",
+    "nyc": "^15.1.0",
     "sway": "^1.0.0"
   },
   "dependencies": {
