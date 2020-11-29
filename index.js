@@ -26,7 +26,6 @@
 
 var assert = require('assert');
 var URI = require('urijs');
-var commonPrefix = require('common-prefix');
 
 var SwaggerConverter = (module.exports = {});
 
@@ -1051,12 +1050,34 @@ function removeDuplicates(collection) {
  * @returns {array} - path with remove common part
  */
 function stripCommonPath(paths) {
-  var prefix = commonPrefix(paths);
-  var prefixLength = prefix.lastIndexOf('/') + 1;
-
+  const prefixLength = getCommonPathLength(paths);
   return paths.map(function (str) {
     return str.slice(prefixLength);
   });
+}
+
+function getCommonPathLength(paths) {
+  if (paths.length === 0) {
+    return 0;
+  }
+
+  var prefixLength = 0;
+  var first = paths[0];
+
+  for (var i = 0; i < first.length; ++i) {
+    const expectedChar = first.charAt(i);
+    for (var j = 1; j < paths.length; ++j) {
+      if (paths[j].charAt(i) !== expectedChar) {
+        return prefixLength;
+      }
+    }
+
+    if (expectedChar === '/') {
+      prefixLength = i + 1;
+    }
+  }
+
+  return prefixLength;
 }
 
 /*
