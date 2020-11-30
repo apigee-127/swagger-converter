@@ -14,7 +14,9 @@
           "type": "string"
         }
       },
-      "required": ["required"]
+      "required": [
+        "required"
+      ]
     }
   },
   "info": {
@@ -77,7 +79,10 @@
             "description": "Return all pets"
           }
         },
-        "tags": ["my/pets", "pets"]
+        "tags": [
+          "my/pets",
+          "pets"
+        ]
       }
     },
     "/stores": {
@@ -87,7 +92,9 @@
             "description": "Return all stores"
           }
         },
-        "tags": ["our/stores"]
+        "tags": [
+          "our/stores"
+        ]
       }
     }
   },

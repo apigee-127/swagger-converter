@@ -38,7 +38,9 @@
           "type": "array"
         }
       },
-      "required": ["id"]
+      "required": [
+        "id"
+      ]
     },
     "Project": {
       "description": "A Project object.",
@@ -49,7 +51,9 @@
           "type": "integer"
         }
       },
-      "required": ["id"]
+      "required": [
+        "id"
+      ]
     }
   },
   "info": {
@@ -76,7 +80,9 @@
             }
           }
         },
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       }
     }
   },
