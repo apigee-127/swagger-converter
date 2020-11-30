@@ -269,7 +269,8 @@ function sortObject(src) {
   if (src != null && typeof src === 'object') {
     const out = {};
 
-    for (const key of Object.keys(src).sort()) {
+    const sortedKeys = Object.keys(src).sort((a, b) => a.localeCompare(b));
+    for (const key of sortedKeys) {
       out[key] = sortObject(src[key]);
     }
     return out;

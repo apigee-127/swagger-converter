@@ -13,10 +13,14 @@
             "description": "Return all pets"
           }
         },
-        "tags": ["pets"]
+        "tags": [
+          "pets"
+        ]
       }
     }
   },
-  "schemes": ["https"],
+  "schemes": [
+    "https"
+  ],
   "swagger": "2.0"
 }

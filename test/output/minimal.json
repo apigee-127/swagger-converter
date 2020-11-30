@@ -11,7 +11,9 @@
             "description": "Return all pets"
           }
         },
-        "tags": ["pets"]
+        "tags": [
+          "pets"
+        ]
       }
     },
     "/stores": {
@@ -21,7 +23,9 @@
             "description": "Return all stores"
           }
         },
-        "tags": ["stores"]
+        "tags": [
+          "stores"
+        ]
       }
     }
   },
