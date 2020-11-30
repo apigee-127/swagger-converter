@@ -34,15 +34,11 @@ const { describe, it } = require('mocha');
 
 const { convert, listApiDeclarations } = require('..');
 
+const outputPath = './test/output/';
 function readInputFile(filepath) {
   const fullPath = path.join('./test/input/', filepath);
   return JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
 }
-
-function writeOutputFile(filepath, json) {
-
-}
-const outputPath = './test/output/';
 
 const inputs = [
   {
@@ -143,13 +139,14 @@ function testInput(input) {
 
     it('output should produce the same output as output file', () => {
       const outputFilePath = path.join(outputPath, input.output);
+      const fileContent = JSON.stringify(sortObject(converted), null, 2) + '\n';
+
       if (process.env.WRITE_CONVERTED) {
-        const fileContent = JSON.stringify(sortObject(converted), null, 2) + '\n';
         fs.writeFileSync(outputFilePath, fileContent);
       }
 
-      const outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
-      expect(converted).to.deep.equal(outputFile);
+      const outputFile = fs.readFileSync(outputFilePath, 'utf-8');
+      expect(fileContent).to.deep.equal(outputFile);
     });
   });
 }
