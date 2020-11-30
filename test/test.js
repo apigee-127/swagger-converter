@@ -34,7 +34,14 @@ const { describe, it } = require('mocha');
 
 const { convert, listApiDeclarations } = require('..');
 
-const inputPath = './test/input/';
+function readInputFile(filepath) {
+  const fullPath = path.join('./test/input/', filepath);
+  return JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+}
+
+function writeOutputFile(filepath, json) {
+
+}
 const outputPath = './test/output/';
 
 const inputs = [
@@ -101,17 +108,11 @@ inputs.forEach(testInput);
 testListApiDeclarations();
 
 function testInput(input) {
-  const outputFilePath = path.join(outputPath, input.output);
-  const resourceListingPath = path.join(inputPath, input.resourceListing);
-  const resourceListingFile = fs.readFileSync(resourceListingPath).toString();
-  let resourceListing = JSON.parse(resourceListingFile);
+  let resourceListing = readInputFile(input.resourceListing);
   let apiDeclarations = {};
 
   for (const key in input.apiDeclarations) {
-    const apiDeclaration = input.apiDeclarations[key];
-    const apiDeclarationPath = path.join(inputPath, apiDeclaration);
-    const apiDeclarationFile = fs.readFileSync(apiDeclarationPath).toString();
-    apiDeclarations[key] = JSON.parse(apiDeclarationFile);
+    apiDeclarations[key] = readInputFile(input.apiDeclarations[key]);
   }
 
   // Deep freeze resourceListing and apiDeclarations to make sure API is working without touching the input objects
@@ -140,12 +141,13 @@ function testInput(input) {
       ).to.deep.equal([]);
     });
 
-    if (process.env.WRITE_CONVERTED) {
-      const fileContent = JSON.stringify(sortObject(converted), null, 2) + '\n';
-      fs.writeFileSync(outputFilePath, fileContent);
-    }
-
     it('output should produce the same output as output file', () => {
+      const outputFilePath = path.join(outputPath, input.output);
+      if (process.env.WRITE_CONVERTED) {
+        const fileContent = JSON.stringify(sortObject(converted), null, 2) + '\n';
+        fs.writeFileSync(outputFilePath, fileContent);
+      }
+
       const outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
       expect(converted).to.deep.equal(outputFile);
     });
