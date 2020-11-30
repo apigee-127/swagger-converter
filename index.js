@@ -606,8 +606,8 @@ prototype.buildOperation = function (oldOperation, operationDefaults) {
  * Builds a Swagger 2.0 responses object form a Swagger 1.x responseMessages object
  * @param oldOperation {object} - Swagger 1.x operation object
  * @returns {object} - Swagger 2.0 response object
-*/
-prototype.buildResponses = function(oldOperation) {
+ */
+prototype.buildResponses = function (oldOperation) {
   var responses = {};
 
   this.forEach(oldOperation.responseMessages, function (oldResponse) {
@@ -623,12 +623,12 @@ prototype.buildResponses = function(oldOperation) {
     );
   });
 
-  if (!Object.keys(responses).some(key => /^2\d\d$/.test(key))) {
+  if (!Object.keys(responses).some((key) => /^2\d\d$/.test(key))) {
     responses['200'] = {
-      description: 'No response was specified'
+      description: 'No response was specified',
     };
     extend(responses['200'], {
-      schema: undefinedIfEmpty(this.buildDataType(oldOperation, true))
+      schema: undefinedIfEmpty(this.buildDataType(oldOperation, true)),
     });
   }
 
