@@ -1,43 +1,39 @@
 {
-    "info": {
-        "title": "Title was not specified",
-        "version": "1.0.0"
-    },
-    "paths": {
-        "/pets": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Return all pets"
-                    }
-                },
-                "tags": [
-                    "pets"
-                ]
-            }
+  "info": {
+    "title": "Title was not specified",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/pets": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Return all pets"
+          }
         },
-        "/stores": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Return all stores"
-                    }
-                },
-                "tags": [
-                    "stores"
-                ]
-            }
-        }
+        "tags": ["pets"]
+      }
     },
-    "swagger": "2.0",
-    "tags": [
-        {
-            "description": "A list of pets",
-            "name": "pets"
+    "/stores": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Return all stores"
+          }
         },
-        {
-            "description": "A list of stores",
-            "name": "stores"
-        }
-    ]
+        "tags": ["stores"]
+      }
+    }
+  },
+  "swagger": "2.0",
+  "tags": [
+    {
+      "description": "A list of pets",
+      "name": "pets"
+    },
+    {
+      "description": "A list of stores",
+      "name": "stores"
+    }
+  ]
 }

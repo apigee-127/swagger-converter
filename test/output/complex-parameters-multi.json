@@ -1,73 +1,73 @@
 {
-    "info": {
-        "title": "Complex Parameters test",
-        "version": "1.0.0"
-    },
-    "paths": {
-        "/": {
-            "get": {
-                "parameters": [
-                    {
-                        "default": "latest",
-                        "description": "The document ID",
-                        "in": "query",
-                        "name": "documentId",
-                        "required": false,
-                        "type": "string"
-                    },
-                    {
-                        "collectionFormat": "multi",
-                        "description": "The array of document IDs",
-                        "in": "query",
-                        "items": {
-                            "type": "string"
-                        },
-                        "name": "documentIds",
-                        "required": false,
-                        "type": "array"
-                    },
-                    {
-                        "collectionFormat": "multi",
-                        "description": "The array of author IDs",
-                        "in": "query",
-                        "items": {
-                            "type": "string"
-                        },
-                        "name": "authorIds",
-                        "required": false,
-                        "type": "array"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "GET successful"
-                    }
-                },
-                "summary": "GET from root"
+  "info": {
+    "title": "Complex Parameters test",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "parameters": [
+          {
+            "default": "latest",
+            "description": "The document ID",
+            "in": "query",
+            "name": "documentId",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "collectionFormat": "multi",
+            "description": "The array of document IDs",
+            "in": "query",
+            "items": {
+              "type": "string"
             },
-            "post": {
-                "parameters": [
-                    {
-                        "description": "The document",
-                        "in": "body",
-                        "name": "document",
-                        "required": true,
-                        "schema": {
-                            "default": 0,
-                            "maximum": 100,
-                            "minimum": 0,
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "POST successful"
-                    }
-                },
-                "summary": "POST to root"
+            "name": "documentIds",
+            "required": false,
+            "type": "array"
+          },
+          {
+            "collectionFormat": "multi",
+            "description": "The array of author IDs",
+            "in": "query",
+            "items": {
+              "type": "string"
+            },
+            "name": "authorIds",
+            "required": false,
+            "type": "array"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GET successful"
+          }
+        },
+        "summary": "GET from root"
+      },
+      "post": {
+        "parameters": [
+          {
+            "description": "The document",
+            "in": "body",
+            "name": "document",
+            "required": true,
+            "schema": {
+              "default": 0,
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
             }
-        }
-    },
-    "swagger": "2.0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "POST successful"
+          }
+        },
+        "summary": "POST to root"
+      }
+    }
+  },
+  "swagger": "2.0"
 }

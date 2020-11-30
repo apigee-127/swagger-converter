@@ -31,9 +31,7 @@
   "models": {
     "Project": {
       "id": "Project",
-      "required": [
-        "id"
-      ],
+      "required": ["id"],
       "properties": {
         "id": {
           "type": "integer",
@@ -45,9 +43,7 @@
     },
     "LongProject": {
       "id": "LongProject",
-      "required": [
-        "id"
-      ],
+      "required": ["id"],
       "properties": {
         "id": {
           "type": "integer",
