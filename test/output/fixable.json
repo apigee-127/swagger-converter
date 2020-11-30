@@ -86,14 +86,6 @@
       }
     },
     "/stores": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "Return all stores"
-          }
-        },
-        "tags": ["our/stores"]
-      },
       "delete": {
         "parameters": [
           {
@@ -107,7 +99,19 @@
             "description": "Store deleted"
           }
         },
-        "tags": ["our/stores"]
+        "tags": [
+          "our/stores"
+        ]
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Return all stores"
+          }
+        },
+        "tags": [
+          "our/stores"
+        ]
       }
     }
   },
