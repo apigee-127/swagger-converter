@@ -16,6 +16,23 @@
               "message": "Return all stores"
             }
           ]
+        },
+        {
+          "method": "DELETE",
+          "summary": "",
+          "parameters": [
+            {
+              "name": "StoreID",
+              "paramType": "query",
+              "type": "integer"
+            }
+          ],
+          "responseMessages": [
+            {
+              "code": 204,
+              "message": "Store deleted"
+            }
+          ]
         }
       ]
     }
