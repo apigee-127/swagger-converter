@@ -606,9 +606,7 @@ prototype.buildOperation = function (oldOperation, operationDefaults) {
  * @returns {object} - Swagger 2.0 response object
  */
 prototype.buildResponses = function (oldOperation) {
-  var responses = {
-    200: { description: 'No response was specified' },
-  };
+  var responses = {};
 
   this.forEach(oldOperation.responseMessages, function (oldResponse) {
     var code = '' + oldResponse.code;
@@ -623,9 +621,14 @@ prototype.buildResponses = function (oldOperation) {
     );
   });
 
-  extend(responses['200'], {
-    schema: undefinedIfEmpty(this.buildDataType(oldOperation, true)),
-  });
+  if (!Object.keys(responses).some((key) => /^2\d\d$/.test(key))) {
+    responses['200'] = {
+      description: 'No response was specified',
+    };
+    extend(responses['200'], {
+      schema: undefinedIfEmpty(this.buildDataType(oldOperation, true)),
+    });
+  }
 
   return responses;
 };

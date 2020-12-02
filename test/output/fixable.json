@@ -86,6 +86,23 @@
       }
     },
     "/stores": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "StoreID",
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Store deleted"
+          }
+        },
+        "tags": [
+          "our/stores"
+        ]
+      },
       "get": {
         "responses": {
           "200": {
