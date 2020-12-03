@@ -3,6 +3,7 @@
   "version": "1.5.1",
   "description": "Converts Swagger documents from version 1.x to version 2.0",
   "main": "index.js",
+  "files": [],
   "engines": {
     "node": ">= 10.x"
   },
