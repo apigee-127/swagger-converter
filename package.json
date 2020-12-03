@@ -1,6 +1,6 @@
 {
   "name": "swagger-converter",
-  "version": "1.5.1",
+  "version": "2.0.0",
   "description": "Converts Swagger documents from version 1.x to version 2.0",
   "main": "index.js",
   "files": [],
