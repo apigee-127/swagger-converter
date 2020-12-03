@@ -26,6 +26,21 @@
           "method": "get"
         }
       ]
+    },
+    {
+      "path": "/projects.json",
+      "operations": [
+        {
+          "responseMessages": [
+            {
+              "code": 200,
+              "responseModel": "[Project]",
+              "message": "Success"
+            }
+          ],
+          "method": "get"
+        }
+      ]
     }
   ],
   "models": {
