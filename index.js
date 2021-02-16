@@ -823,7 +823,8 @@ prototype.buildModel = function (oldModel) {
     items = this.buildModel(oldModel.items);
   }
 
-  return extend(this.buildDataType(oldModel, true), {
+  var customProperties = getCustomProperties(oldModel);
+  return extend(this.buildDataType(oldModel, true), customProperties, {
     description: oldModel.description,
     required: undefinedIfEmpty(required),
     properties: undefinedIfEmpty(properties),

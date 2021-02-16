@@ -21,5 +21,20 @@
       ]
     }
   ],
-  "models": {}
+  "models": {
+    "Tag": {
+      "id": "Tag",
+      "properties": {
+        "id": {
+          "YouShallNotPass": false,
+          "x-custom": true,
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
 }
