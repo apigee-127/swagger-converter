@@ -1,4 +1,18 @@
 {
+  "definitions": {
+    "Tag": {
+      "properties": {
+        "id": {
+          "format": "int64",
+          "type": "integer",
+          "x-custom": true
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  },
   "info": {
     "title": "Title was not specified",
     "version": "1.0.0"
