@@ -904,13 +904,17 @@ prototype.forEach = function (collection, iteratee) {
   if (Array.isArray(collection)) {
     collection.forEach(iteratee);
   } else {
-    //In some cases order of iteration influence order of arrays in output.
-    //To have stable result of convertion, keys need to be sorted.
-    Object.keys(collection)
-      .sort()
-      .forEach(function (key) {
-        iteratee(collection[key], key);
-      });
+    var keys = Object.keys(collection);
+
+    if (!this.options.preserveOrder) {
+      //In some cases order of iteration influence order of arrays in output.
+      //To have stable result of convertion, keys need to be sorted.
+      keys.sort();
+    }
+
+    keys.forEach(function (key) {
+      iteratee(collection[key], key);
+    });
   }
 };
 
