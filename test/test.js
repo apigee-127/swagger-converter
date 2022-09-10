@@ -139,13 +139,13 @@ function testInput(input) {
 
     it('output should produce the same output as output file', () => {
       const outputFilePath = path.join(outputPath, input.output);
-      const fileContent = JSON.stringify(sortObject(converted), null, 2) + '\n';
+      const fileContent = sortObject(converted);
 
       if (process.env.WRITE_CONVERTED) {
-        fs.writeFileSync(outputFilePath, fileContent);
+        fs.writeFileSync(outputFilePath, JSON.stringify(fileContent, null, 2) + '\n');
       }
 
-      const outputFile = fs.readFileSync(outputFilePath, 'utf-8');
+      const outputFile = JSON.parse(fs.readFileSync(outputFilePath, 'utf-8'));
       expect(fileContent).to.deep.equal(outputFile);
     });
   });
